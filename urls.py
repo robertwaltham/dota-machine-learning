@@ -5,6 +5,8 @@ from DotaStats import views
 
 urlpatterns = patterns('',
     url(r'^$', views.IndexView.as_view() , name='index'),
-    url(r'^get_match/$', views.get_match, name='get_match'),
+    url(r'^load-matches/$', views.LoadMatchesFromAPI.as_view(), name='load-matches'),
+    url(r'^process-match/$', views.LoadDetailsForMatch.as_view(), name='process-match'),
+    url(r'^matches', views.AjaxGetMatchList.as_view(), name='matches')
 
 )

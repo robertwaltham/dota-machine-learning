@@ -1,37 +1,28 @@
 from django.db import models
-from django.contrib.auth.models import User
-from django.core.urlresolvers import reverse
+import json
+import urllib2
+import datetime
+
+
+key = '8F60050E57157048213A74F8D0F08EFA'
+api_base = 'https://api.steampowered.com'
+match_history = '/IDOTA2Match_570/GetMatchHistory/V001/?min_players=10&matches_requested=25&key='
+details = '/IDOTA2Match_570/GetMatchDetails/V001/?match_id={0}&key={1}'
 
 
 class Player(models.Model):
     name = models.CharField(max_length=255)
+    account_id = models.IntegerField(primary_key=True, default=0)
 
 
 class Hero(models.Model):
     name = models.CharField(max_length=255)
+    hero_id = models.IntegerField(primary_key=True, default=0)
 
 
 class Item(models.Model):
     name = models.CharField(max_length=255)
-
-# CREATE TABLE MATCH (
-# match_id int unsigned PRIMARY KEY,
-# start_time datetime NOT NULL,
-# match_seq_num int unsigned NOT NULL,
-# has_been_processed bool NOT NULL DEFAULT FALSE,
-# radiant_win bool,
-# duration int unsigned,
-# tower_status_radiant smallint unsigned,
-# tower_status_dire smallint unsigned,
-# barracks_status_radiant smallint unsigned,
-# barracks_status_dire smallint unsigned,
-# cluster int unsigned,
-# first_blood_time smallint unsigned,
-# lobby_type tinyint unsigned,
-# human_players tinyint unsigned,
-# leagueid tinyint unsigned,
-# game_mode tinyint unsigned
-# ) ENGINE = MyISAM
+    item_id = models.IntegerField(primary_key=True, default=0)
 
 
 class Match(models.Model):
@@ -52,34 +43,96 @@ class Match(models.Model):
     league_id = models.SmallIntegerField(default=0)
     game_mode = models.SmallIntegerField(default=0)
 
+    def __unicode__(self):
+        return str(self.match_id)
+
     @staticmethod
     def get_all():
         return Match.objects.all()
 
-# "match_id": int unsigned,
-# "account_id": int unsigned,
-# "player_slot": tinyint unsigned,
-# "hero_id": smallint unsigned,
-# "item_0": smallint unsigned,
-# "item_1": smallint unsigned,
-# "item_2": smallint unsigned,
-# "item_3": smallint unsigned,
-# "item_4": smallint unsigned,
-# "item_5": smallint unsigned,
-# "kills": smallint unsigned,
-# "deaths": smallint unsigned,
-# "assists": smallint unsigned,
-# "leaver_status": tinyint unsigned,
-# "gold": smallint unsigned,
-# "last_hits": smallint unsigned,
-# "denies": smallint unsigned,
-# "gold_per_min": smallint unsigned,
-# "xp_per_min": smallint unsigned,
-# "gold_spent": smallint unsigned,
-# "hero_damage": smallint unsigned,
-# "tower_damage": smallint unsigned,
-# "hero_healing": smallint unsigned,
-# "level": tinyint unsigned,
+    @staticmethod
+    def get_new_matches_from_api():
+        url = api_base + match_history + key
+        try:
+            data = json.load(urllib2.urlopen(url))
+            result = []
+            if data['result']['status'] == 1:
+                for match in data['result']['matches']:
+                    start_time = datetime.datetime.fromtimestamp(match['start_time'])
+                    new_match = Match()
+                    new_match.match_id = match['match_id']
+                    new_match.match_seq_num = match['match_seq_num']
+                    new_match.start_time = start_time
+                    new_match.lobby_type = match['lobby_type']
+                    new_match.save()
+                    result.append(new_match)
+            return result
+        except urllib2.HTTPError as e:
+            return "HTTP error({0}): {1}".format(e.errno, e.strerror)
+
+    @staticmethod
+    def get_winrate():
+        return {'dire': Match.objects.filter(has_been_processed=True, radiant_win=False).count(),
+                'radiant': Match.objects.filter(has_been_processed=True, radiant_win=True).count()}
+
+    @staticmethod
+    def get_unprocessed_match():
+        unprocessed = Match.objects.filter(has_been_processed=False).order_by('match_id')
+        return unprocessed[0]
+
+    @staticmethod
+    def get_count_unprocessed():
+        return Match.objects.filter(has_been_processed=True).count()
+
+    def load_details_from_api(self):
+        url = api_base + details.format(self.match_id, key)
+        try:
+            data = json.load(urllib2.urlopen(url))
+            if data['result']:
+                result = data['result']
+                self.radiant_win = bool(result['radiant_win'])
+                self.duration = int(result['duration'])
+                self.tower_status_radiant = int(result['tower_status_radiant'])
+                self.tower_status_dire = int(result['tower_status_dire'])
+                self.barracks_status_radiant = int(result['barracks_status_radiant'])
+                self.barracks_status_dire = int(result['barracks_status_dire'])
+                self.cluster = int(result['cluster'])
+                self.first_blood_time = int(result['first_blood_time'])
+                self.lobby_type = int(result['lobby_type'])
+                self.human_players = int(result['human_players'])
+                for player_in_game in result['players']:
+                    player_in_match = PlayerInMatch()
+                    player_in_match.match_id = self.match_id
+                    player_in_match.player, created = Player.objects.get_or_create(account_id=player_in_game['account_id'])
+                    player_in_match.hero, created = Hero.objects.get_or_create(hero_id=player_in_game['hero_id'])
+                    player_in_match.item_0, created = Item.objects.get_or_create(item_id=player_in_game["item_0"])
+                    player_in_match.item_1, created = Item.objects.get_or_create(item_id=player_in_game["item_1"])
+                    player_in_match.item_2, created = Item.objects.get_or_create(item_id=player_in_game["item_2"])
+                    player_in_match.item_3, created = Item.objects.get_or_create(item_id=player_in_game["item_3"])
+                    player_in_match.item_4, created = Item.objects.get_or_create(item_id=player_in_game["item_4"])
+                    player_in_match.item_5, created = Item.objects.get_or_create(item_id=player_in_game["item_5"])
+                    player_in_match.player_slot = player_in_game['player_slot']
+
+                    player_in_match.kills = player_in_game['kills']
+                    player_in_match.deaths = player_in_game['deaths']
+                    player_in_match.assists = player_in_game['assists']
+                    player_in_match.leaver_status = player_in_game['leaver_status']
+                    player_in_match.gold = player_in_game['gold']
+                    player_in_match.last_hits = player_in_game['last_hits']
+                    player_in_match.denies = player_in_game['denies']
+                    player_in_match.gold_per_min = player_in_game['gold_per_min']
+                    player_in_match.xp_per_min = player_in_game['xp_per_min']
+                    player_in_match.gold_spent = player_in_game['gold_spent']
+                    player_in_match.hero_damage = player_in_game['hero_damage']
+                    player_in_match.tower_damage = player_in_game['tower_damage']
+                    player_in_match.hero_healing = player_in_game['hero_healing']
+                    player_in_match.level = player_in_game['level']
+                    player_in_match.save()
+                self.has_been_processed = True
+                self.save()
+            return data
+        except urllib2.HTTPError as e:
+            return "HTTP error({0}): {1}".format(e.errno, e.strerror)
 
 
 class PlayerInMatch(models.Model):

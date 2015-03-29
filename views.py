@@ -1,20 +1,14 @@
-from django.shortcuts import render
-from django.views.generic.edit import CreateView, UpdateView, DeleteView
-from django.views.generic import DetailView, View, TemplateView
-from django.views.generic.edit import FormView
-
+from django.views.generic import DetailView, View, TemplateView, ListView
+from django.views.generic.list import MultipleObjectMixin
+from django.core import serializers
+from django import http
 from models import Match
-
 import json
-import urllib2
-import datetime
 
-from django.http import HttpResponse
 
-key = '8F60050E57157048213A74F8D0F08EFA'
-api_base = 'https://api.steampowered.com'
-match_history = '/IDOTA2Match_570/GetMatchHistory/V001/?min_players=10&matches_requested=25&key='
-details = '/IDOTA2Match_570/GetMatchDetails/V001/?match_id=%s&key=%s'
+class AJAXListMixin(MultipleObjectMixin):
+    def get(self, request, *args, **kwargs):
+        return http.HttpResponse(serializers.serialize('json', self.get_queryset()))
 
 
 class IndexView(TemplateView):
@@ -22,27 +16,25 @@ class IndexView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super(IndexView, self).get_context_data(**kwargs)
-        context['matches'] = Match.get_all()
+        context['count'] = Match.get_all().count()
+        context['matches'] = serializers.serialize('json', Match.get_all())
+        context['processed'] = Match.get_count_unprocessed()
+        context['wins'] = Match.get_winrate()
         return context
 
 
-def get_match(request):
-    url = api_base + match_history + key
-    data = json.load(urllib2.urlopen(url))
+class LoadMatchesFromAPI(AJAXListMixin, ListView):
+    def get_queryset(self):
+        return Match.get_new_matches_from_api()
 
-    result = ''
 
-    if data['result']['status'] == 1:
-        for match in data['result']['matches']:
-            start_time = datetime.datetime.fromtimestamp(match['start_time'])
-            result += "%s %s %s\n" % (match['match_id'], match['match_seq_num'],
-                                      start_time.strftime('%Y-%m-%d %H:%M:%S'))
-            new_match = Match()
-            new_match.match_id = match['match_id']
-            new_match.match_seq_num = match['match_seq_num']
-            new_match.start_time = start_time
-            new_match.lobby_type = match['lobby_type']
-            new_match.save()
+class LoadDetailsForMatch(AJAXListMixin, ListView):
+    def get_queryset(self):
+        match = Match.get_unprocessed_match()
+        match.load_details_from_api()
+        return [match]
 
-    return HttpResponse("<pre>" + url + "\n" + result + "</pre>")
 
+class AjaxGetMatchList(AJAXListMixin, ListView):
+    def get_queryset(self):
+        return Match.get_all()
