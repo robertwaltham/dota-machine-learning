@@ -1,0 +1,83 @@
+{% extends "DotaStats/index.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-4">
+            Stored Matches: <span rv-count="matches"></span>
+        </div>
+        <div class="col-md-4">
+            Processed: <span rv-html="processed_matches"></span>
+        </div>
+        <div class="col-md-4">
+            <div>
+                Dire: {{ wins.dire }}, Radiant: {{ wins.radiant }}
+            </div>
+            <div>
+                Items: {{ items.count }}, Heroes: {{ heroes.count }}
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-4">
+            <button rv-on-click="events.getMatches" class="btn btn-default" type="submit">Get Matches</button>
+        </div>
+        <div class="col-md-4">
+            <button rv-on-click="events.processMatch" class="btn btn-default" type="submit">Process Match</button>
+        </div>
+        <div class="col-md-4">
+            <button rv-on-click="events.getStaticData" class="btn btn-default" type="submit">Load Static Data</button>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-6">
+        {% if items %}
+            <table>
+            {% for item in items %}
+                <tr>
+                    <td>
+                        {{ item.item_id }}
+                    </td>
+                    <td>
+                        {{ item.name }}
+                    </td>
+                </tr>
+            {% endfor %}
+            </table>
+        {% else %}
+            No Items
+        {% endif %}
+        </div>
+        <div class="col-md-6">
+        {% if heroes %}
+            <table>
+            {% for hero in heroes %}
+                <tr>
+                    <td>
+                        {{ hero.hero_id }}
+                    </td>
+                    <td>
+                        <a href="{% url 'hero-detail' hero.hero_id%}">{{ hero.name }}</a>
+                    </td>
+                </tr>
+            {% endfor %}
+            </table>
+        {% else %}
+            No Heroes
+        {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+    (function(){
+        stats.init({
+            getMatch:'{% url 'load-matches' %}',
+            processMatch:'{% url 'process-match' %}',
+            staticData: '{% url 'static-data' %}'
+        },
+        {{ matches|safe }},
+        '{{ processed }}');
+    })();
+</script>
+{% endblock %}

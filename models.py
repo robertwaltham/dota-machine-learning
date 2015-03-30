@@ -8,6 +8,8 @@ key = '8F60050E57157048213A74F8D0F08EFA'
 api_base = 'https://api.steampowered.com'
 match_history = '/IDOTA2Match_570/GetMatchHistory/V001/?min_players=10&matches_requested=25&key='
 details = '/IDOTA2Match_570/GetMatchDetails/V001/?match_id={0}&key={1}'
+heroes = 'https://api.steampowered.com/IEconDOTA2_570/GetHeroes/v001/?key='
+items = 'https://api.steampowered.com/IEconDOTA2_570/GetGameItems/v0001/?key='
 
 
 class Player(models.Model):
@@ -19,10 +21,52 @@ class Hero(models.Model):
     name = models.CharField(max_length=255)
     hero_id = models.IntegerField(primary_key=True, default=0)
 
+    @staticmethod
+    def load_heroes_from_api():
+        url = heroes + key
+        try:
+            data = json.load(urllib2.urlopen(url))
+            print(json.dumps(data))
+            result = 0
+            if data['result']['status'] == 200:
+                result = len(data['result']['heroes'])
+                for new_hero in data['result']['heroes']:
+                    hero, created = Hero.objects.get_or_create(hero_id=new_hero['id'])
+                    hero.name = new_hero['name']
+                    hero.save()
+            return result
+        except urllib2.HTTPError as e:
+            return "HTTP error({0}): {1}".format(e.errno, e.strerror)
+
+    def get_winrate(self):
+        player_in_match = PlayerInMatch.objects.filter(hero=self)
+        if player_in_match.count() > 0:
+            radiant = player_in_match.filter(player_slot__lt=128, match__radiant_win=True).count()
+            dire = player_in_match.filter(player_slot__gt=127, match__radiant_win=True).count()
+            return (radiant + dire) / player_in_match.count()
+        return 0
+
 
 class Item(models.Model):
     name = models.CharField(max_length=255)
     item_id = models.IntegerField(primary_key=True, default=0)
+
+    @staticmethod
+    def load_items_from_api():
+        url = items + key
+        try:
+            data = json.load(urllib2.urlopen(url))
+            result = 0
+            print(json.dumps(data))
+            if data['result']['status'] == 200:
+                result = len(data['result']['items'])
+                for new_item in data['result']['items']:
+                    item, created = Item.objects.get_or_create(item_id=new_item['id'])
+                    item.name = new_item['name']
+                    item.save()
+            return result
+        except urllib2.HTTPError as e:
+            return "HTTP error({0}): {1}".format(e.errno, e.strerror)
 
 
 class Match(models.Model):
@@ -103,7 +147,8 @@ class Match(models.Model):
                 for player_in_game in result['players']:
                     player_in_match = PlayerInMatch()
                     player_in_match.match_id = self.match_id
-                    player_in_match.player, created = Player.objects.get_or_create(account_id=player_in_game['account_id'])
+                    player_in_match.player, created = \
+                        Player.objects.get_or_create(account_id=player_in_game['account_id'])
                     player_in_match.hero, created = Hero.objects.get_or_create(hero_id=player_in_game['hero_id'])
                     player_in_match.item_0, created = Item.objects.get_or_create(item_id=player_in_game["item_0"])
                     player_in_match.item_1, created = Item.objects.get_or_create(item_id=player_in_game["item_1"])
@@ -134,6 +179,10 @@ class Match(models.Model):
         except urllib2.HTTPError as e:
             return "HTTP error({0}): {1}".format(e.errno, e.strerror)
 
+    @staticmethod
+    def get_matches_for_hero_id(hero_id):
+        return Match.objects.filter(playerinmatch__hero__pk=hero_id)
+
 
 class PlayerInMatch(models.Model):
     match = models.ForeignKey(Match)
@@ -160,4 +209,11 @@ class PlayerInMatch(models.Model):
     tower_damage = models.SmallIntegerField()
     hero_healing = models.SmallIntegerField()
     level = models.SmallIntegerField()
+
+    @staticmethod
+    def get_player_in_match_for_hero_id(hero):
+        return PlayerInMatch.objects.filter(hero=hero)
+
+    def team(self):
+        return 'Radiant' if self.player_slot <= 127 else 'Dire'
 

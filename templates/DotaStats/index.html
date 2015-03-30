@@ -25,40 +25,12 @@
   </div>
 </nav>
 
-<div class="container">
-    <div class="row">
-        <div class="col-md-12">
-            Stored Matches: <span rv-count="matches"></span>
-        </div>
-        <div class="col-md-12">
-            Processed: <span rv-html="processed_matches"></span>
-        </div>
-        <div class="col-md-12">
-            Dire: {{ wins.dire }}, Radiant: {{ wins.radiant }}
-        </div>
-    </div>
-    <div class="row">
-        <div class="col-md-12">
-            <button rv-on-click="events.getMatches" class="btn btn-default" type="submit">Get Matches</button>
-        </div>
-    </div>
-        <div class="row">
-        <div class="col-md-12">
-            <button rv-on-click="events.processMatch" class="btn btn-default" type="submit">Process Match</button>
-        </div>
-    </div>
-</div>
+{% block content %}
 
-<script>
-    (function(){
-        stats.init({
-            getMatch:'{% url 'load-matches' %}',
-            processMatch:'{% url 'process-match' %}'
-        },
-        {{ matches|safe }},
-        '{{ processed }}');
-    })();
-</script>
+
+{% endblock %}
+
+
 
 
 </body>

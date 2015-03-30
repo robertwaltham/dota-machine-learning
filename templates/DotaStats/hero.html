@@ -1,0 +1,60 @@
+{% extends "DotaStats/index.html" %}
+
+
+{% block content %}
+{% if hero %}
+<div class="container">
+    <div class="row">
+       <div class="col-md-12">
+            <h1>{{ hero.hero_id }} {{ hero.name }}</h1>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12">
+            {{ hero.get_winrate }}
+        </div>
+    </div>
+    <div class="row">
+       <div class="col-md-12">
+        {% if matches %}
+            <table>
+            <thead>
+                <tr>
+                    <td>
+                        Match ID
+                    </td>
+                    <td>
+                        Team
+                    </td>
+                    <td>
+                        Win
+                    </td>
+                </tr>
+            </thead>
+            <tbody>
+                {% for match in matches %}
+                <tr>
+                    <td>
+                        <a href="{% url 'match-detail' match.match_id %}">{{ match.match_id}}</a>
+                    </td>
+                    <td>
+                        {{ match.team }}
+                    </td>
+                    <td>
+                        {{ match.match.radiant_win }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+
+            </table>
+        {% else %}
+            No Items
+        {% endif %}
+        </div>
+    </div>
+
+</div>
+{% endif %}
+
+{% endblock %}

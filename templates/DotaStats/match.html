@@ -1,0 +1,46 @@
+{% extends "DotaStats/index.html" %}
+
+
+{% block content %}
+{% if match %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-12">
+            <h1>Match: {{ match.match_id }}</h1>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12">
+        <table>
+            <thead>
+                <tr>
+                    <td>
+                        Hero
+                    </td>
+                    <td>
+                        Hero Slot
+                    </td>
+                </tr>
+            </thead>
+            <tbody>
+                {% for player_in_match in match.playerinmatch_set.all %}
+                <tr>
+                    <td>
+                        <a href="{% url 'hero-detail' player_in_match.hero.hero_id%}">{{ player_in_match.hero.name }}</a>
+                    </td>
+                    <td>
+                        {{ player_in_match.player_slot }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        </div>
+    </div>
+
+
+</div>
+{% endif %}
+
+{% endblock %}

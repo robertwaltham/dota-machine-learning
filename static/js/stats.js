@@ -6,7 +6,8 @@ var stats = null;
         processed_matches:0,
         urls: {
             getMatch: '',
-            processMatch: ''
+            processMatch: '',
+            staticData: ''
         },
         init: function (urls, matches, processed_matches) {
             stats.processed_matches = processed_matches;
@@ -49,6 +50,18 @@ var stats = null;
                             stats.matches[match.pk] = match.fields;
                         });
                         stats.processed_matches++;
+                    })
+                    .fail(function () {
+                        console.log("error");
+                    })
+                    .always(function () {
+                    });
+            },
+            getStaticData: function(){
+                $.getJSON(stats.urls.staticData)
+                    .done(function (data) {
+                        alert('Loaded: ' + data.heroes + ' Heroes, ' + data.items + ' Items');
+                        console.log(data);
                     })
                     .fail(function () {
                         console.log("error");
