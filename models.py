@@ -1,12 +1,15 @@
+from __future__ import absolute_import
+
 from django.db import models
 import json
 import urllib2
 import datetime
+import pytz
 
 
 key = '8F60050E57157048213A74F8D0F08EFA'
 api_base = 'https://api.steampowered.com'
-match_history = '/IDOTA2Match_570/GetMatchHistory/V001/?min_players=10&matches_requested=25&key='
+match_history = '/IDOTA2Match_570/GetMatchHistory/V001/?min_players=10&matches_requested=100&game_mode=1&key='
 details = '/IDOTA2Match_570/GetMatchDetails/V001/?match_id={0}&key={1}'
 heroes = 'https://api.steampowered.com/IEconDOTA2_570/GetHeroes/v001/?key='
 items = 'https://api.steampowered.com/IEconDOTA2_570/GetGameItems/v0001/?key='
@@ -103,13 +106,14 @@ class Match(models.Model):
             if data['result']['status'] == 1:
                 for match in data['result']['matches']:
                     start_time = datetime.datetime.fromtimestamp(match['start_time'])
-                    new_match = Match()
-                    new_match.match_id = match['match_id']
-                    new_match.match_seq_num = match['match_seq_num']
-                    new_match.start_time = start_time
-                    new_match.lobby_type = match['lobby_type']
+                    new_match, created = Match.objects.get_or_create(match_id=match['match_id'],
+                                                                     start_time=pytz.utc.localize(start_time),
+                                                                     match_seq_num=match['match_seq_num'],
+                                                                     lobby_type= match['lobby_type'])
                     new_match.save()
                     result.append(new_match)
+                    if not created:
+                        get_details.delay(new_match.match_id)
             return result
         except urllib2.HTTPError as e:
             return "HTTP error({0}): {1}".format(e.errno, e.strerror)
@@ -120,9 +124,19 @@ class Match(models.Model):
                 'radiant': Match.objects.filter(has_been_processed=True, radiant_win=True).count()}
 
     @staticmethod
-    def get_unprocessed_match():
+    def get_unprocessed_match(n):
         unprocessed = Match.objects.filter(has_been_processed=False).order_by('match_id')
-        return unprocessed[0]
+        return unprocessed[:n]
+
+    @staticmethod
+    def batch_process_matches():
+        unprocessed = Match.objects.filter(has_been_processed=False).order_by('match_id')[:100]
+        counter = 0
+        for match in unprocessed:
+            get_details.apply_async((match.match_id,), countdown=counter)
+            counter += 1
+        return unprocessed
+
 
     @staticmethod
     def get_count_unprocessed():
@@ -157,7 +171,6 @@ class Match(models.Model):
                     player_in_match.item_4, created = Item.objects.get_or_create(item_id=player_in_game["item_4"])
                     player_in_match.item_5, created = Item.objects.get_or_create(item_id=player_in_game["item_5"])
                     player_in_match.player_slot = player_in_game['player_slot']
-
                     player_in_match.kills = player_in_game['kills']
                     player_in_match.deaths = player_in_game['deaths']
                     player_in_match.assists = player_in_game['assists']
@@ -217,3 +230,4 @@ class PlayerInMatch(models.Model):
     def team(self):
         return 'Radiant' if self.player_slot <= 127 else 'Dire'
 
+from .tasks import get_details

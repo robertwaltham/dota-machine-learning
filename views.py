@@ -32,9 +32,14 @@ class LoadMatchesFromAPI(AJAXListMixin, ListView):
 
 class LoadDetailsForMatch(AJAXListMixin, ListView):
     def get_queryset(self):
-        match = Match.get_unprocessed_match()
+        match = Match.get_unprocessed_match(1)
         match.load_details_from_api()
         return [match]
+
+
+class LoadDetailsForAll(AJAXListMixin, ListView):
+    def get_queryset(self):
+        return Match.batch_process_matches()
 
 
 class AjaxGetMatchList(AJAXListMixin, ListView):
