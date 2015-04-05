@@ -13,8 +13,8 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Hero',
             fields=[
-                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('name', models.CharField(max_length=255)),
+                ('hero_id', models.IntegerField(default=0, serialize=False, primary_key=True)),
             ],
             options={
             },
@@ -23,8 +23,8 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Item',
             fields=[
-                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('name', models.CharField(max_length=255)),
+                ('item_id', models.IntegerField(default=0, serialize=False, primary_key=True)),
             ],
             options={
             },
@@ -33,22 +33,22 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Match',
             fields=[
-                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
+                ('match_id', models.IntegerField(default=0, serialize=False, primary_key=True)),
                 ('start_time', models.DateTimeField()),
                 ('match_seq_num', models.IntegerField()),
-                ('has_been_processed', models.BooleanField()),
-                ('radiant_win', models.BooleanField()),
-                ('duration', models.IntegerField()),
-                ('tower_status_radiant', models.SmallIntegerField()),
-                ('tower_status_dire', models.SmallIntegerField()),
-                ('barracks_status_radiant', models.SmallIntegerField()),
-                ('barracks_status_dire', models.SmallIntegerField()),
-                ('cluster', models.IntegerField()),
-                ('first_blood_time', models.SmallIntegerField()),
-                ('lobby_type', models.SmallIntegerField()),
-                ('human_players', models.SmallIntegerField()),
-                ('league_id', models.SmallIntegerField()),
-                ('game_mode', models.SmallIntegerField()),
+                ('has_been_processed', models.BooleanField(default=False)),
+                ('radiant_win', models.BooleanField(default=False)),
+                ('duration', models.IntegerField(default=0)),
+                ('tower_status_radiant', models.SmallIntegerField(default=0)),
+                ('tower_status_dire', models.SmallIntegerField(default=0)),
+                ('barracks_status_radiant', models.SmallIntegerField(default=0)),
+                ('barracks_status_dire', models.SmallIntegerField(default=0)),
+                ('cluster', models.IntegerField(default=0)),
+                ('first_blood_time', models.SmallIntegerField(default=0)),
+                ('lobby_type', models.SmallIntegerField(default=0)),
+                ('human_players', models.SmallIntegerField(default=0)),
+                ('league_id', models.SmallIntegerField(default=0)),
+                ('game_mode', models.SmallIntegerField(default=0)),
             ],
             options={
             },
@@ -57,8 +57,8 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Player',
             fields=[
-                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('name', models.CharField(max_length=255)),
+                ('account_id', models.IntegerField(default=0, serialize=False, primary_key=True)),
             ],
             options={
             },

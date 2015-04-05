@@ -1,4 +1,4 @@
-__author__ = 'leveltenpaladin'
+__author__ = 'Robert Waltham'
 import numpy as np
 from sklearn import svm, preprocessing
 from DotaStats.models import Match

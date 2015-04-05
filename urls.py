@@ -1,4 +1,4 @@
-__author__ = 'leveltenpaladin'
+__author__ = 'Robert Waltham'
 from django.conf.urls import patterns, url
 
 from DotaStats import views
