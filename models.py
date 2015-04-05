@@ -5,7 +5,7 @@ import json
 import urllib2
 import datetime
 import pytz
-
+import numpy
 
 key = '8F60050E57157048213A74F8D0F08EFA'
 api_base = 'https://api.steampowered.com'
@@ -93,6 +93,17 @@ class Match(models.Model):
     def __unicode__(self):
         return str(self.match_id)
 
+    def get_data_array(self):
+        n_heroes = Hero.objects.all().count()
+        heroes_in_match = self.playerinmatch_set.all()
+        data = numpy.zeros((n_heroes * 2) + 2)
+        for playerinmatch in heroes_in_match:
+            hero_index = playerinmatch.hero_id
+            if playerinmatch.player_slot > 127:
+                hero_index += n_heroes
+            data[hero_index] = 1
+        return data, int(self.radiant_win)
+
     @staticmethod
     def get_all():
         return Match.objects.all()
@@ -109,7 +120,7 @@ class Match(models.Model):
                     new_match, created = Match.objects.get_or_create(match_id=match['match_id'],
                                                                      start_time=pytz.utc.localize(start_time),
                                                                      match_seq_num=match['match_seq_num'],
-                                                                     lobby_type= match['lobby_type'])
+                                                                     lobby_type=match['lobby_type'])
                     new_match.save()
                     result.append(new_match)
                     if not created:

@@ -10,6 +10,7 @@ urlpatterns = patterns('',
     url(r'^load-static-data/$', views.LoadStaticDataView.as_view(), name='static-data'),
     url(r'^matches', views.AjaxGetMatchList.as_view(), name='matches'),
     url(r'^hero/(?P<pk>\d+)/', views.HeroDetail.as_view(), name='hero-detail'),
-    url(r'^match/(?P<pk>\d+)/', views.MatchDetail.as_view(), name='match-detail')
+    url(r'^match/(?P<pk>\d+)/', views.MatchDetail.as_view(), name='match-detail'),
+    url(r'^build/', views.BuildDataView.as_view(), name='build-data')
 
 )

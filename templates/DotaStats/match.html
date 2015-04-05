@@ -7,6 +7,11 @@
     <div class="row">
         <div class="col-md-12">
             <h1>Match: {{ match.match_id }}</h1>
+            {% if match.radiant_win %}
+                <h3>Radiant Win</h3>
+            {% else %}
+                <h3>Dire Win</h3>
+            {% endif %}
         </div>
     </div>
     <div class="row">
@@ -36,6 +41,11 @@
             </tbody>
         </table>
 
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12">
+            {{ data }}
         </div>
     </div>
 

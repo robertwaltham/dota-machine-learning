@@ -4,7 +4,8 @@ from django.core import serializers
 from django import http
 from models import Match, Item, Hero, PlayerInMatch
 import json
-
+import numpy as np
+from scikit import build
 
 class AJAXListMixin(MultipleObjectMixin):
     def get(self, request, *args, **kwargs):
@@ -73,4 +74,16 @@ class MatchDetail(DetailView):
 
     def get_context_data(self, **kwargs):
         context = super(MatchDetail, self).get_context_data(**kwargs)
+        data, v = self.object.get_data_array()
+        context['data'] = np.array_str(data)
         return context
+
+
+class BuildDataView(TemplateView):
+    template_name = 'DotaStats/build.html'
+
+    def get_context_data(self, **kwargs):
+        context = super(BuildDataView, self).get_context_data(**kwargs)
+        context['results'], context['count'] = build()
+        return context
+

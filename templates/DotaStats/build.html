@@ -1,0 +1,22 @@
+{% extends "DotaStats/index.html" %}
+
+
+{% block content %}
+<div class="container">
+    <div class="row">
+       <div class="col-md-12">
+           Correct: {{ count }}%
+       </div>
+    </div>
+    {% for result in results %}
+    <div class="row">
+        <div class="col-md-4">
+           <a href="{% url 'match-detail' result.id %}">{{ result.id}}</a>
+        </div>
+        <div class="col-md-8">
+            Win:{{ result.win }} | Predict:{{ result.predict }}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
