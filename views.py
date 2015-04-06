@@ -1,11 +1,15 @@
 from django.views.generic import DetailView, View, TemplateView, ListView
+from django.views.generic.edit import CreateView, UpdateView, DeleteView
+
 from django.views.generic.list import MultipleObjectMixin
 from django.core import serializers
+from django.core.urlresolvers import reverse
+
 from django import http
-from models import Match, Item, Hero, PlayerInMatch, ScikitModel
+from models import Match, Item, Hero, PlayerInMatch, ScikitModel, MatchPrediction
 import json
 import numpy as np
-from scikit import DotaModel
+from forms import PredictionForm
 
 from tasks import load_matches
 
@@ -111,3 +115,18 @@ class MatchList(ListView):
     model = Match
     paginate_by = 50
     queryset = Match.objects.all().order_by('-match_id')
+
+
+class CreatePredictionView(CreateView):
+    template_name = 'DotaStats/predict.html'
+    form_class = PredictionForm
+    context_object_name = 'form'
+
+    def get_success_url(self):
+        self.object.get_prediction()
+        return reverse('index')
+
+    def get_context_data(self, **kwargs):
+        context = super(CreatePredictionView, self).get_context_data(**kwargs)
+        context['predictions'] = MatchPrediction.objects.all()
+        return context

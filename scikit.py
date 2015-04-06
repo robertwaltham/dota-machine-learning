@@ -2,6 +2,7 @@ __author__ = 'Robert Waltham'
 import numpy as np
 from sklearn import svm, preprocessing
 from DotaStats.models import Match, ScikitModel
+import json
 
 
 class DotaModel():
@@ -55,6 +56,11 @@ class DotaModel():
         model.is_ready = True
         model.save()
         return model.id
+
+    @staticmethod
+    def predict(scikit_model_id, match_data):
+        return ScikitModel.objects.get(id=scikit_model_id).picked_model.predict(match_data)[0]
+
 
 
 

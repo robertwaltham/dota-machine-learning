@@ -52,6 +52,9 @@ class Hero(models.Model):
             return "%0.2f" % (float(radiant + dire) / float(player_in_match.count()))
         return 0
 
+    def __unicode__(self):
+        return self.name[14:]
+
 
 class Item(models.Model):
     name = models.CharField(max_length=255)
@@ -73,6 +76,9 @@ class Item(models.Model):
             return result
         except urllib2.HTTPError as e:
             return "HTTP error({0}): {1}".format(e.errno, e.strerror)
+
+    def __unicode__(self):
+        return self.name
 
 
 # Game Modes
@@ -314,6 +320,9 @@ class PlayerInMatch(models.Model):
     hero_healing = models.SmallIntegerField()
     level = models.SmallIntegerField()
 
+    def __unicode__(self):
+        return 'Match: {0}, Hero: {1}, Team: {2}'.format(self.match_id, self.hero, self.team())
+
     @staticmethod
     def get_player_in_match_for_hero_id(hero):
         return PlayerInMatch.objects.filter(hero=hero)
@@ -334,6 +343,9 @@ class ScikitModel(models.Model):
     task_id = models.CharField(max_length=255, null=True)
     is_ready = models.BooleanField(default=False)
 
+    def __unicode__(self):
+        return '{0} - {1} Count: {2}'.format(self.id, self.created, self.match_count)
+
     @staticmethod
     def create_model():
         model = ScikitModel()
@@ -347,43 +359,54 @@ class ScikitModel(models.Model):
 class MatchPrediction(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     model = models.ForeignKey(ScikitModel)
-    predicted_radiant_win = models.NullBooleanField(null=True)
-
-    @staticmethod
-    def create_prediction(radiant_heroes, dire_heroes):
-        prediction = MatchPrediction()
-        for hero in radiant_heroes:
-            hero_in_prediction = HeroInPrediction()
-            hero_in_prediction.hero = hero
-            hero_in_prediction.player_on_radiant = True
-            hero_in_prediction.save()
-
-        for hero in dire_heroes:
-            hero_in_prediction = HeroInPrediction()
-            hero_in_prediction.hero = hero
-            hero_in_prediction.player_on_radiant = True
-            hero_in_prediction.save()
-
-        prediction.save()
-        return prediction
-
+    predicted_radiant_win = models.NullBooleanField(null=True, default=None)
+    radiant_player_0 = models.ForeignKey(Hero, related_name="radiant_player_0", null=True)
+    radiant_player_1 = models.ForeignKey(Hero, related_name="radiant_player_1", null=True)
+    radiant_player_2 = models.ForeignKey(Hero, related_name="radiant_player_2", null=True)
+    radiant_player_3 = models.ForeignKey(Hero, related_name="radiant_player_3", null=True)
+    radiant_player_4 = models.ForeignKey(Hero, related_name="radiant_player_4", null=True)
+    radiant_player_5 = models.ForeignKey(Hero, related_name="radiant_player_5", null=True)
+    dire_player_0 = models.ForeignKey(Hero, related_name="dire_player_0", null=True)
+    dire_player_1 = models.ForeignKey(Hero, related_name="dire_player_1", null=True)
+    dire_player_2 = models.ForeignKey(Hero, related_name="dire_player_2", null=True)
+    dire_player_3 = models.ForeignKey(Hero, related_name="dire_player_3", null=True)
+    dire_player_4 = models.ForeignKey(Hero, related_name="dire_player_4", null=True)
+    dire_player_5 = models.ForeignKey(Hero, related_name="dire_player_5", null=True)
+    
     def get_data_array(self):
         n_heroes = Hero.objects.all().count()
-        heroes_in_match = self.heroinprediction_set.all()
         data = numpy.zeros((n_heroes * 2) + 2)
-        for hero_in_match in heroes_in_match:
-            hero_index = hero_in_match.hero_id
-            if not hero_in_match.player_on_radiant:
-                hero_index += n_heroes
-            data[hero_index] = 1
+        data[self.radiant_player_0.hero_id] = 1
+        data[self.radiant_player_1.hero_id] = 1
+        data[self.radiant_player_2.hero_id] = 1
+        data[self.radiant_player_3.hero_id] = 1
+        data[self.radiant_player_4.hero_id] = 1
+        
+        data[self.dire_player_0.hero_id + n_heroes] = 1
+        data[self.dire_player_1.hero_id + n_heroes] = 1
+        data[self.dire_player_2.hero_id + n_heroes] = 1
+        data[self.dire_player_3.hero_id + n_heroes] = 1
+        data[self.dire_player_4.hero_id + n_heroes] = 1
         return data
 
+    def get_predicted_team(self):
+        if self.predicted_radiant_win is None:
+            return 'None'
+        else:
+            if self.predicted_radiant_win:
+                return 'Radiant'
+            else:
+                return 'Dire'
 
-class HeroInPrediction(models.Model):
-    match_prediction = models.ForeignKey(MatchPrediction)
-    hero = models.ForeignKey(Hero)
-    player_on_radiant = models.BooleanField(null=False, default=True)
-
+    def get_prediction(self):
+        prediction = DotaModel.predict(self.model_id, self.get_data_array())
+        if prediction == 1:
+            self.predicted_radiant_win = True
+        else:
+            self.predicted_radiant_win = False
+        self.save()
+        return prediction
 
 #important: has to be last for circular import crap
 from .tasks import get_details, build_model
+from .scikit import DotaModel
