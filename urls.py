@@ -11,6 +11,8 @@ urlpatterns = patterns('',
     url(r'^matches', views.AjaxGetMatchList.as_view(), name='matches'),
     url(r'^hero/(?P<pk>\d+)/', views.HeroDetail.as_view(), name='hero-detail'),
     url(r'^match/(?P<pk>\d+)/', views.MatchDetail.as_view(), name='match-detail'),
-    url(r'^build/', views.BuildDataView.as_view(), name='build-data')
+    url(r'^build/', views.BuildDataView.as_view(), name='build-data'),
+    url(r'^items/', views.ItemListView.as_view(), name='items'),
+    url(r'^heroes/', views.HeroListView.as_view(), name='heroes')
 
 )

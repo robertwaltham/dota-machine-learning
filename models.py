@@ -7,9 +7,10 @@ import datetime
 import pytz
 import numpy
 
-key = '8F60050E57157048213A74F8D0F08EFA'
+from website.settings import DotaAPIKey
+
 api_base = 'https://api.steampowered.com'
-match_history = '/IDOTA2Match_570/GetMatchHistory/V001/?min_players=10&matches_requested=100&game_mode=1&key='
+match_history = '/IDOTA2Match_570/GetMatchHistory/V001/'
 details = '/IDOTA2Match_570/GetMatchDetails/V001/?match_id={0}&key={1}'
 heroes = 'https://api.steampowered.com/IEconDOTA2_570/GetHeroes/v001/?key='
 items = 'https://api.steampowered.com/IEconDOTA2_570/GetGameItems/v0001/?key='
@@ -17,7 +18,7 @@ items = 'https://api.steampowered.com/IEconDOTA2_570/GetGameItems/v0001/?key='
 
 class Player(models.Model):
     name = models.CharField(max_length=255)
-    account_id = models.IntegerField(primary_key=True, default=0)
+    account_id = models.BigIntegerField(primary_key=True, default=0)
 
 
 class Hero(models.Model):
@@ -26,7 +27,7 @@ class Hero(models.Model):
 
     @staticmethod
     def load_heroes_from_api():
-        url = heroes + key
+        url = heroes + DotaAPIKey
         try:
             data = json.load(urllib2.urlopen(url))
             print(json.dumps(data))
@@ -56,7 +57,7 @@ class Item(models.Model):
 
     @staticmethod
     def load_items_from_api():
-        url = items + key
+        url = items + DotaAPIKey
         try:
             data = json.load(urllib2.urlopen(url))
             result = 0
@@ -71,6 +72,30 @@ class Item(models.Model):
         except urllib2.HTTPError as e:
             return "HTTP error({0}): {1}".format(e.errno, e.strerror)
 
+
+# Game Modes
+#     0 - None
+#     1 - All Pick
+#     2 - Captain's Mode
+#     3 - Random Draft
+#     4 - Single Draft
+#     5 - All Random
+#     6 - Intro
+#     7 - Diretide
+#     8 - Reverse Captain's Mode
+#     9 - The Greeviling
+#     10 - Tutorial
+#     11 - Mid Only
+#     12 - Least Played
+#     13 - New Player Pool
+#     14 - Compendium Matchmaking
+#     16 - Captain's Draft
+#
+# Skill
+#     0 - Any
+#     1 - Normal
+#     2 - High
+#     3 - Very High
 
 class Match(models.Model):
     match_id = models.IntegerField(primary_key=True, default=0)
@@ -89,6 +114,7 @@ class Match(models.Model):
     human_players = models.SmallIntegerField(default=0)
     league_id = models.SmallIntegerField(default=0)
     game_mode = models.SmallIntegerField(default=0)
+    skill = models.SmallIntegerField(default=0)
 
     def __unicode__(self):
         return str(self.match_id)
@@ -109,11 +135,63 @@ class Match(models.Model):
         return Match.objects.all()
 
     @staticmethod
+    def get_match_api_url(game_mode=0, skill=0, date_min=0, date_max=0, min_players=10,
+                          start_at_match_id=0, matches_requested=100):
+
+        url = api_base + match_history + '?key=' + DotaAPIKey
+        if game_mode > 0:
+            url += '&game_mode=' + str(game_mode)
+        if skill > 0:
+            url += '&skill=' + str(skill)
+        if date_min > 0:
+            url += '&date_min=' + str(date_min)
+        if date_max > 0:
+            url += '&date_max=' + str(date_max)
+        if min_players > 0:
+            url += '&min_players=' + str(min_players)
+        if start_at_match_id > 0:
+            url += '&start_at_match_id=' + str(start_at_match_id)
+        if matches_requested > 0:
+            url += '&matches_requested=' + str(matches_requested)
+        return url
+
+    @staticmethod
+    def batch_get_matches_from_api(n=500):
+        last_match = 0
+        counter = 0
+        requested_matches = 100
+        for i in range(0, n, requested_matches):
+            url = Match.get_match_api_url(matches_requested=requested_matches, start_at_match_id=last_match)
+            print url
+            try:
+                data = json.load(urllib2.urlopen(url))
+                if data['result']['status'] == 1:
+                    print data['result']['num_results']
+                    for match in data['result']['matches']:
+                        last_match = match['match_id']
+                        start_time = datetime.datetime.fromtimestamp(match['start_time'])
+                        new_match, created = Match.objects.get_or_create(match_id=match['match_id'],
+                                                                         start_time=pytz.utc.localize(start_time),
+                                                                         match_seq_num=match['match_seq_num'],
+                                                                         lobby_type=match['lobby_type'])
+                        new_match.save()
+                        if created:
+                            get_details.apply_async((new_match.match_id,), countdown=counter)
+                            counter += 1
+                    if data['result']['results_remaining'] < requested_matches:
+                        break
+                else:
+                    return 'Status: {0}'.format(data['result']['status'])
+            except urllib2.HTTPError as e:
+                return 'HTTP error({0}): {1}'.format(e.errno, e.strerror)
+        return 'Created: {0}'.format(counter)
+
+    @staticmethod
     def get_new_matches_from_api():
-        url = api_base + match_history + key
+        url = Match.get_match_api_url()
         try:
             data = json.load(urllib2.urlopen(url))
-            result = []
+            counter = 0
             if data['result']['status'] == 1:
                 for match in data['result']['matches']:
                     start_time = datetime.datetime.fromtimestamp(match['start_time'])
@@ -122,10 +200,10 @@ class Match(models.Model):
                                                                      match_seq_num=match['match_seq_num'],
                                                                      lobby_type=match['lobby_type'])
                     new_match.save()
-                    result.append(new_match)
-                    if not created:
-                        get_details.delay(new_match.match_id)
-            return result
+                    if created:
+                        get_details.apply_async((new_match.match_id,), countdown=counter)
+                        counter += 1
+            return counter
         except urllib2.HTTPError as e:
             return "HTTP error({0}): {1}".format(e.errno, e.strerror)
 
@@ -154,7 +232,7 @@ class Match(models.Model):
         return Match.objects.filter(has_been_processed=True).count()
 
     def load_details_from_api(self):
-        url = api_base + details.format(self.match_id, key)
+        url = api_base + details.format(self.match_id, DotaAPIKey)
         try:
             data = json.load(urllib2.urlopen(url))
             if data['result']:
@@ -229,7 +307,7 @@ class PlayerInMatch(models.Model):
     gold_per_min = models.SmallIntegerField()
     xp_per_min = models.SmallIntegerField()
     gold_spent = models.SmallIntegerField()
-    hero_damage = models.SmallIntegerField()
+    hero_damage = models.IntegerField()
     tower_damage = models.SmallIntegerField()
     hero_healing = models.SmallIntegerField()
     level = models.SmallIntegerField()
@@ -242,3 +320,12 @@ class PlayerInMatch(models.Model):
         return 'Radiant' if self.player_slot <= 127 else 'Dire'
 
 from .tasks import get_details
+
+
+class ScikitModel(models.Model):
+    created = models.DateTimeField(auto_now_add=True)
+    picked_model = models.TextField(null=False)
+    algorithm = models.CharField(max_length=255)
+    min_date = models.DateTimeField()
+    max_date = models.DateTimeField()
+    match_count = models.IntegerField()

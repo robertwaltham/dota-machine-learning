@@ -18,19 +18,19 @@
 
 
 <nav class="navbar navbar-default">
-  <div class="container-fluid">
-    <div class="navbar-header">
-      <a class="navbar-brand" href="#">Stats</a>
+    <div class="container-fluid">
+        <div class="navbar-header">
+            <a class="navbar-brand" href="{% url 'index' %}">Stats</a>
+            <a class="navbar-brand" href="{% url 'heroes' %}">Heroes</a>
+            <a class="navbar-brand" href="{% url 'items' %}">Items</a>
+        </div>
     </div>
-  </div>
 </nav>
 
 {% block content %}
 
 
 {% endblock %}
-
-
 
 
 </body>

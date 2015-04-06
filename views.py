@@ -7,6 +7,9 @@ import json
 import numpy as np
 from scikit import build
 
+from tasks import load_matches
+
+
 class AJAXListMixin(MultipleObjectMixin):
     def get(self, request, *args, **kwargs):
         return http.HttpResponse(serializers.serialize('json', self.get_queryset()))
@@ -21,14 +24,13 @@ class IndexView(TemplateView):
         context['matches'] = serializers.serialize('json', Match.get_all())
         context['processed'] = Match.get_count_unprocessed()
         context['wins'] = Match.get_winrate()
-        context['items'] = Item.objects.all()
-        context['heroes'] = Hero.objects.all()
         return context
 
 
-class LoadMatchesFromAPI(AJAXListMixin, ListView):
-    def get_queryset(self):
-        return Match.get_new_matches_from_api()
+class LoadMatchesFromAPI(TemplateView):
+    def get(self, request, *args, **kwargs):
+        load_matches.delay()
+        return http.HttpResponse(json.dumps({'status': 'ok'}))
 
 
 class LoadDetailsForMatch(AJAXListMixin, ListView):
@@ -86,4 +88,20 @@ class BuildDataView(TemplateView):
         context = super(BuildDataView, self).get_context_data(**kwargs)
         context['results'], context['count'] = build()
         return context
+
+
+class HeroListView(ListView):
+    template_name = 'DotaStats/herolist.html'
+    context_object_name = 'heroes'
+
+    def get_queryset(self):
+        return Hero.objects.all()
+
+
+class ItemListView(ListView):
+    template_name = 'DotaStats/itemlist.html'
+    context_object_name = 'items'
+
+    def get_queryset(self):
+        return Item.objects.all()
 

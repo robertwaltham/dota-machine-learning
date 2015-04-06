@@ -21,19 +21,13 @@ var stats = null;
             };
 
             rivets.bind($('body'), {
-                events: stats.events,
-                matches: stats.matches,
-                processed_matches: stats.processed_matches
+                stats:stats
             })
         },
         events: {
             getMatches: function () {
                 $.getJSON(stats.urls.getMatch)
                     .done(function (data) {
-                        _.each(data, function(match, index, list){
-                            console.log(match.pk);
-                            stats.matches[match.pk] = match.fields;
-                        });
                         console.log(data);
                     })
                     .fail(function () {
@@ -45,11 +39,7 @@ var stats = null;
             processMatch: function () {
                 $.getJSON(stats.urls.processMatch)
                     .done(function (data) {
-                        _.each(data, function(match, index, list){
-                            console.log(match.pk);
-                            stats.matches[match.pk] = match.fields;
-                        });
-                        stats.processed_matches++;
+                        console.log(data);
                     })
                     .fail(function () {
                         console.log("error");
