@@ -8,6 +8,8 @@ import pytz
 import numpy
 
 from website.settings import DotaAPIKey
+from djcelery.picklefield import PickledObjectField
+from djcelery.models import TaskMeta
 
 api_base = 'https://api.steampowered.com'
 match_history = '/IDOTA2Match_570/GetMatchHistory/V001/'
@@ -47,7 +49,7 @@ class Hero(models.Model):
         if player_in_match.count() > 0:
             radiant = player_in_match.filter(player_slot__lt=128, match__radiant_win=True).count()
             dire = player_in_match.filter(player_slot__gt=127, match__radiant_win=True).count()
-            return (radiant + dire) / player_in_match.count()
+            return "%0.2f" % (float(radiant + dire) / float(player_in_match.count()))
         return 0
 
 
@@ -306,7 +308,7 @@ class PlayerInMatch(models.Model):
     denies = models.SmallIntegerField()
     gold_per_min = models.SmallIntegerField()
     xp_per_min = models.SmallIntegerField()
-    gold_spent = models.SmallIntegerField()
+    gold_spent = models.IntegerField()
     hero_damage = models.IntegerField()
     tower_damage = models.SmallIntegerField()
     hero_healing = models.SmallIntegerField()
@@ -319,13 +321,69 @@ class PlayerInMatch(models.Model):
     def team(self):
         return 'Radiant' if self.player_slot <= 127 else 'Dire'
 
-from .tasks import get_details
-
 
 class ScikitModel(models.Model):
     created = models.DateTimeField(auto_now_add=True)
-    picked_model = models.TextField(null=False)
-    algorithm = models.CharField(max_length=255)
-    min_date = models.DateTimeField()
-    max_date = models.DateTimeField()
-    match_count = models.IntegerField()
+    picked_model = PickledObjectField(
+        compress=True, null=True, default=None, editable=False,
+    )
+    algorithm = models.CharField(max_length=255, null=True)
+    min_date = models.DateTimeField(null=True)
+    max_date = models.DateTimeField(null=True)
+    match_count = models.IntegerField(default=0)
+    task_id = models.CharField(max_length=255, null=True)
+    is_ready = models.BooleanField(default=False)
+
+    @staticmethod
+    def create_model():
+        model = ScikitModel()
+        model.save()
+        async_result = build_model.apply_async((3000, model.id))
+        model.task_id = async_result.id
+        model.save()
+        return model
+
+
+class MatchPrediction(models.Model):
+    created = models.DateTimeField(auto_now_add=True)
+    model = models.ForeignKey(ScikitModel)
+    predicted_radiant_win = models.NullBooleanField(null=True)
+
+    @staticmethod
+    def create_prediction(radiant_heroes, dire_heroes):
+        prediction = MatchPrediction()
+        for hero in radiant_heroes:
+            hero_in_prediction = HeroInPrediction()
+            hero_in_prediction.hero = hero
+            hero_in_prediction.player_on_radiant = True
+            hero_in_prediction.save()
+
+        for hero in dire_heroes:
+            hero_in_prediction = HeroInPrediction()
+            hero_in_prediction.hero = hero
+            hero_in_prediction.player_on_radiant = True
+            hero_in_prediction.save()
+
+        prediction.save()
+        return prediction
+
+    def get_data_array(self):
+        n_heroes = Hero.objects.all().count()
+        heroes_in_match = self.heroinprediction_set.all()
+        data = numpy.zeros((n_heroes * 2) + 2)
+        for hero_in_match in heroes_in_match:
+            hero_index = hero_in_match.hero_id
+            if not hero_in_match.player_on_radiant:
+                hero_index += n_heroes
+            data[hero_index] = 1
+        return data
+
+
+class HeroInPrediction(models.Model):
+    match_prediction = models.ForeignKey(MatchPrediction)
+    hero = models.ForeignKey(Hero)
+    player_on_radiant = models.BooleanField(null=False, default=True)
+
+
+#important: has to be last for circular import crap
+from .tasks import get_details, build_model

@@ -11,6 +11,9 @@
             <div>
                 Dire: {{ wins.dire }}, Radiant: {{ wins.radiant }}
             </div>
+            <div>
+                Models: {{ models }}
+            </div>
         </div>
     </div>
     <div class="row">
@@ -18,13 +21,32 @@
             <button rv-on-click="stats.events.getMatches" class="btn btn-default" type="submit">Get Matches</button>
             <button rv-on-click="stats.events.processMatch" class="btn btn-default" type="submit">Process Match</button>
             <button rv-on-click="stats.events.getStaticData" class="btn btn-default" type="submit">Load Static Data</button>
+            <button rv-on-click="stats.events.buildModel" class="btn btn-default" type="submit">Build Model</button>
         </div>
     </div>
-    <div class="row">
-        <div class="col-md-12">
-            <a href="{% url 'build-data' %}">Build Data</a>
-        </div>
-    </div>
+{#    <div class="row">#}
+{#        <div class="col-md-12">#}
+{#            {% if models %}#}
+{#                <table>#}
+{#                {% for model in models %}#}
+{#                    <tr>#}
+{#                        <td>#}
+{#                            {{ model.id }}#}
+{#                        </td>#}
+{#                        <td>#}
+{#                            {{ model.n_matches }}#}
+{#                        </td>#}
+{#                        <td>#}
+{#                            {{ model.is_ready }}#}
+{#                        </td>#}
+{#                    </tr>#}
+{#                {% endfor %}#}
+{#                </table>#}
+{#            {% else %}#}
+{#                No Models#}
+{#            {% endif %}#}
+{#        </div>#}
+{#    </div>#}
 </div>
 
 <script>
@@ -32,7 +54,8 @@
         stats.init({
             getMatch:'{% url 'load-matches' %}',
             processMatch:'{% url 'process-match' %}',
-            staticData: '{% url 'static-data' %}'
+            staticData: '{% url 'static-data' %}',
+            buildModel: '{% url 'build-data' %}'
         },
         {{ matches|safe }},
         '{{ processed }}');

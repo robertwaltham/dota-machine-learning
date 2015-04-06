@@ -2,10 +2,10 @@ from django.views.generic import DetailView, View, TemplateView, ListView
 from django.views.generic.list import MultipleObjectMixin
 from django.core import serializers
 from django import http
-from models import Match, Item, Hero, PlayerInMatch
+from models import Match, Item, Hero, PlayerInMatch, ScikitModel
 import json
 import numpy as np
-from scikit import build
+from scikit import DotaModel
 
 from tasks import load_matches
 
@@ -24,6 +24,7 @@ class IndexView(TemplateView):
         context['matches'] = serializers.serialize('json', Match.get_all())
         context['processed'] = Match.get_count_unprocessed()
         context['wins'] = Match.get_winrate()
+        context['models'] = ScikitModel.objects.filter(is_ready=True).count()
         return context
 
 
@@ -81,13 +82,11 @@ class MatchDetail(DetailView):
         return context
 
 
-class BuildDataView(TemplateView):
-    template_name = 'DotaStats/build.html'
-
-    def get_context_data(self, **kwargs):
-        context = super(BuildDataView, self).get_context_data(**kwargs)
-        context['results'], context['count'] = build()
-        return context
+class BuildDataView(View):
+    @staticmethod
+    def get(request):
+        model = ScikitModel.create_model()
+        return http.HttpResponse(json.dumps({'task_id': model.task_id}))
 
 
 class HeroListView(ListView):
@@ -105,3 +104,10 @@ class ItemListView(ListView):
     def get_queryset(self):
         return Item.objects.all()
 
+
+class MatchList(ListView):
+    template_name = 'DotaStats/matchlist.html'
+    context_object_name = 'matches'
+    model = Match
+    paginate_by = 50
+    queryset = Match.objects.all().order_by('-match_id')

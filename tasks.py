@@ -1,8 +1,8 @@
 from __future__ import absolute_import
 
 from website.celery import app
-from DotaStats.models import Match
-
+from DotaStats.models import Match, ScikitModel
+from DotaStats.scikit import DotaModel
 
 @app.task
 def get_details(match_id):
@@ -15,5 +15,9 @@ def get_details(match_id):
 @app.task
 def load_matches():
     return Match.batch_get_matches_from_api()
+
+@app.task
+def build_model(n_matches, model_id):
+    return DotaModel.build_and_store(n_matches, model_id)
 
 

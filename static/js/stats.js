@@ -7,7 +7,8 @@ var stats = null;
         urls: {
             getMatch: '',
             processMatch: '',
-            staticData: ''
+            staticData: '',
+            buildModel:''
         },
         init: function (urls, matches, processed_matches) {
             stats.processed_matches = processed_matches;
@@ -28,7 +29,7 @@ var stats = null;
             getMatches: function () {
                 $.getJSON(stats.urls.getMatch)
                     .done(function (data) {
-                        console.log(data);
+                        alert("Done");
                     })
                     .fail(function () {
                         console.log("error");
@@ -39,7 +40,18 @@ var stats = null;
             processMatch: function () {
                 $.getJSON(stats.urls.processMatch)
                     .done(function (data) {
-                        console.log(data);
+                        alert("Done");
+                    })
+                    .fail(function () {
+                        console.log("error");
+                    })
+                    .always(function () {
+                    });
+            },
+            buildModel: function () {
+                $.getJSON(stats.urls.buildModel)
+                    .done(function (data) {
+                        alert(data.task_id);
                     })
                     .fail(function () {
                         console.log("error");

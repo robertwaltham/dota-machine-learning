@@ -1,0 +1,46 @@
+{% extends "DotaStats/index.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-12">
+        {% if matches %}
+            <table>
+            {% for match in matches %}
+                <tr>
+                    <td>
+                        <a href="{% url 'match-detail' match.match_id %}">{{ match.match_id}}</a>
+                    </td>
+                    <td>
+                        {{ match.radiant_win }}
+                    </td>
+                </tr>
+            {% endfor %}
+            </table>
+        {% else %}
+            No Items
+        {% endif %}
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12">
+        {% if is_paginated %}
+            <div class="pagination">
+                <span class="page-links">
+                    {% if page_obj.has_previous %}
+                        <a href="{% url 'matches' %}?page={{ page_obj.previous_page_number }}">previous</a>
+                    {% endif %}
+                    <span class="page-current">
+                        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}.
+                    </span>
+                    {% if page_obj.has_next %}
+                        <a href="{% url 'matches' %}?page={{ page_obj.next_page_number }}">next</a>
+                    {% endif %}
+                </span>
+            </div>
+        {% endif %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}
