@@ -9,7 +9,6 @@ import numpy
 
 from website.settings import DotaAPIKey
 from djcelery.picklefield import PickledObjectField
-from djcelery.models import TaskMeta
 
 api_base = 'https://api.steampowered.com'
 match_history = '/IDOTA2Match_570/GetMatchHistory/V001/'
@@ -164,10 +163,12 @@ class Match(models.Model):
         return url
 
     @staticmethod
-    def batch_get_matches_from_api(n=500):
+    def batch_get_matches_from_api(n=10):
         last_match = 0
         counter = 0
         requested_matches = 100
+        starting_match_id = 0
+        match_ids = []
         for i in range(0, n, requested_matches):
             url = Match.get_match_api_url(matches_requested=requested_matches, start_at_match_id=last_match)
             print url
@@ -175,8 +176,11 @@ class Match(models.Model):
                 data = json.load(urllib2.urlopen(url))
                 if data['result']['status'] == 1:
                     print data['result']['num_results']
+                    if data['result']['num_results'] > 0 and starting_match_id == 0:
+                        starting_match_id = data['result']['matches'][0]['match_id']
                     for match in data['result']['matches']:
                         last_match = match['match_id']
+                        match_ids.append(last_match)
                         start_time = datetime.datetime.fromtimestamp(match['start_time'])
                         new_match, created = Match.objects.get_or_create(match_id=match['match_id'],
                                                                          start_time=pytz.utc.localize(start_time),
@@ -192,6 +196,9 @@ class Match(models.Model):
                     return 'Status: {0}'.format(data['result']['status'])
             except urllib2.HTTPError as e:
                 return 'HTTP error({0}): {1}'.format(e.errno, e.strerror)
+
+        if starting_match_id > 0:
+            build_and_test.apply_async((starting_match_id, match_ids), countdown=counter)
         return 'Created: {0}'.format(counter)
 
     @staticmethod
@@ -408,5 +415,5 @@ class MatchPrediction(models.Model):
         return prediction
 
 #important: has to be last for circular import crap
-from .tasks import get_details, build_model
+from .tasks import get_details, build_model, build_and_test
 from .scikit import DotaModel

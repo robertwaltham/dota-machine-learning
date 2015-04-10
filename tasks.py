@@ -20,4 +20,13 @@ def load_matches():
 def build_model(n_matches, model_id):
     return DotaModel.build_and_store(n_matches, model_id)
 
+@app.task
+def build_and_test(starting_match_id, test_match_ids):
+    results = DotaModel.build_and_test(starting_match_id, test_match_ids)
+    correct = 0
+    count = len(results)
+    for result in results:
+        if result['prediction'] == result['win']:
+            correct += 1
 
+    return {"count": count, "correct": correct, "%": (float(correct) / float(count)) * 100}

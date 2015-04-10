@@ -9,6 +9,7 @@ from django import http
 from models import Match, Item, Hero, PlayerInMatch, ScikitModel, MatchPrediction
 import json
 import numpy as np
+from scikit import DotaModel
 from forms import PredictionForm
 
 from tasks import load_matches
@@ -25,9 +26,8 @@ class IndexView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super(IndexView, self).get_context_data(**kwargs)
         context['count'] = Match.get_all().count()
-        context['matches'] = serializers.serialize('json', Match.get_all())
+        context['matches'] = []
         context['processed'] = Match.get_count_unprocessed()
-        context['wins'] = Match.get_winrate()
         context['models'] = ScikitModel.objects.filter(is_ready=True).count()
         return context
 
@@ -91,6 +91,15 @@ class BuildDataView(View):
     def get(request):
         model = ScikitModel.create_model()
         return http.HttpResponse(json.dumps({'task_id': model.task_id}))
+
+
+class BuildAndTestView(TemplateView):
+    template_name = 'DotaStats/build.html'
+
+    def get_context_data(self, **kwargs):
+        context = super(BuildAndTestView, self).get_context_data(**kwargs)
+        context['results'], context['count'] = DotaModel.build()
+        return context
 
 
 class HeroListView(ListView):

@@ -12,9 +12,8 @@ class DotaModel():
 
     @staticmethod
     def build():
-        n_tests = 50
-        matches = list(Match.objects.filter(has_been_processed=True))
-        np.random.shuffle(matches)
+        n_tests = 100
+        matches = Match.objects.filter(has_been_processed=True)
         clf = svm.SVC()
         match_features = []
         match_win = []
@@ -61,8 +60,36 @@ class DotaModel():
     def predict(scikit_model_id, match_data):
         return ScikitModel.objects.get(id=scikit_model_id).picked_model.predict(match_data)[0]
 
+    @staticmethod
+    def build_and_test(starting_match_id, test_match_ids):
+        matches = Match.objects.filter(match_id__lt=starting_match_id)
+        model = ScikitModel()
 
+        clf = svm.SVC()
+        match_features = []
+        match_win = []
 
+        for match in matches:
+            match_data, win = match.get_data_array()
+            match_features.append(match_data)
+            match_win.append(win)
+
+        clf.fit(match_features, match_win)
+        model.picked_model = clf
+        model.match_count = len(matches)
+        model.is_ready = True
+        model.save()
+
+        results = []
+        test_matches = []
+        for match_id in test_match_ids:
+            test_matches.append(Match.objects.get(match_id=match_id))
+
+        for match in test_matches:
+            match_data, win = match.get_data_array()
+            prediction = clf.predict(match_data)[0]
+            results.append({'prediction': prediction, 'win': win, 'match_id': match.match_id})
+        return results
 
 
 
