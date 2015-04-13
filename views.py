@@ -70,7 +70,7 @@ class HeroDetail(DetailView):
 
     def get_context_data(self, **kwargs):
         context = super(HeroDetail, self).get_context_data(**kwargs)
-        context['matches'] = PlayerInMatch.get_player_in_match_for_hero_id(self.object)
+        context['matches'] = PlayerInMatch.get_player_in_match_for_hero_id(self.object).order_by('-match_id')[:50]
         return context
 
 
@@ -98,7 +98,7 @@ class BuildAndTestView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super(BuildAndTestView, self).get_context_data(**kwargs)
-        context['results'], context['count'] = DotaModel.build()
+        context['count'], context['accuracy'] = DotaModel.build()
         return context
 
 
@@ -107,7 +107,7 @@ class HeroListView(ListView):
     context_object_name = 'heroes'
 
     def get_queryset(self):
-        return Hero.objects.all()
+        return Hero.objects.filter(hero_id__gt=0)
 
 
 class ItemListView(ListView):
@@ -115,7 +115,7 @@ class ItemListView(ListView):
     context_object_name = 'items'
 
     def get_queryset(self):
-        return Item.objects.all()
+        return Item.objects.filter(item_id__gt=0)
 
 
 class MatchList(ListView):

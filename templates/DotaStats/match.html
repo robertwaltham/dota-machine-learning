@@ -17,27 +17,14 @@
     <div class="row">
         <div class="col-md-12">
         <table>
-            <thead>
-                <tr>
-                    <td>
-                        Hero
-                    </td>
-                    <td>
-                        Hero Slot
-                    </td>
-                </tr>
-            </thead>
             <tbody>
-                {% for player_in_match in match.playerinmatch_set.all %}
                 <tr>
+                    {% for hero in match.get_heroes_for_match %}
                     <td>
-                        <a href="{% url 'hero-detail' player_in_match.hero.hero_id%}">{{ player_in_match.hero.name }}</a>
+                        <a href="{% url 'hero-detail' hero.hero_id%}"> <img src="{{ hero.get_small_image }}"></a>
                     </td>
-                    <td>
-                        {{ player_in_match.player_slot }}
-                    </td>
+                    {% endfor %}
                 </tr>
-                {% endfor %}
             </tbody>
         </table>
 

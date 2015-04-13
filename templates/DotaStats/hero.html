@@ -6,12 +6,12 @@
 <div class="container">
     <div class="row">
        <div class="col-md-12">
-            <h1>{{ hero.hero_id }} {{ hero.name }}</h1>
+            <h1>{{ hero }}</h1>
         </div>
     </div>
     <div class="row">
         <div class="col-md-12">
-            Win Rate: {{ hero.get_winrate }}%
+            {{ hero.get_winrate }}
         </div>
     </div>
     <div class="row">
@@ -43,6 +43,11 @@
                     <td>
                         {{ match.match.radiant_win }}
                     </td>
+                    {% for hero in match.match.get_heroes_for_match %}
+                    <td>
+                        <a href="{% url 'hero-detail' hero.hero_id%}"> <img src="{{ hero.get_small_image }}"></a>
+                    </td>
+                    {% endfor %}
                 </tr>
                 {% endfor %}
             </tbody>
@@ -53,7 +58,25 @@
         {% endif %}
         </div>
     </div>
-
+    <div class="row">
+        <div class="col-md-12">
+        {% if is_paginated %}
+            <div class="pagination">
+                <span class="page-links">
+                    {% if page_obj.has_previous %}
+                        <a href="{% url 'matches' %}?page={{ page_obj.previous_page_number }}">previous</a>
+                    {% endif %}
+                    <span class="page-current">
+                        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}.
+                    </span>
+                    {% if page_obj.has_next %}
+                        <a href="{% url 'matches' %}?page={{ page_obj.next_page_number }}">next</a>
+                    {% endif %}
+                </span>
+            </div>
+        {% endif %}
+        </div>
+    </div>
 </div>
 {% endif %}
 

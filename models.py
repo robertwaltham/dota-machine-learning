@@ -1,6 +1,8 @@
 from __future__ import absolute_import
 
 from django.db import models
+from django.templatetags.static import static
+
 import json
 import urllib2
 import datetime
@@ -51,6 +53,15 @@ class Hero(models.Model):
             return "%0.2f" % (float(radiant + dire) / float(player_in_match.count()))
         return 0
 
+    def get_image(self):
+        return static('image/heroes/' + self.__unicode__() + '.png')
+
+    def get_small_image(self):
+        if self.hero_id > 0:
+            return static('image/small_heroes/' + self.__unicode__() + '.png')
+        else:
+            return ''
+
     def __unicode__(self):
         return self.name[14:]
 
@@ -58,6 +69,9 @@ class Hero(models.Model):
 class Item(models.Model):
     name = models.CharField(max_length=255)
     item_id = models.IntegerField(primary_key=True, default=0)
+
+    def get_image(self):
+        return static('image/items/' + self.__unicode__() + '.png')
 
     @staticmethod
     def load_items_from_api():
@@ -77,7 +91,7 @@ class Item(models.Model):
             return "HTTP error({0}): {1}".format(e.errno, e.strerror)
 
     def __unicode__(self):
-        return self.name
+        return self.name[5:]
 
 
 # Game Modes
@@ -122,19 +136,27 @@ class Match(models.Model):
     league_id = models.SmallIntegerField(default=0)
     game_mode = models.SmallIntegerField(default=0)
     skill = models.SmallIntegerField(default=0)
+    data = PickledObjectField(
+        compress=False, null=True, default=None, editable=False,
+    )
 
     def __unicode__(self):
         return str(self.match_id)
 
     def get_data_array(self):
-        n_heroes = Hero.objects.all().count()
-        heroes_in_match = self.playerinmatch_set.all()
-        data = numpy.zeros((n_heroes * 2) + 2)
-        for playerinmatch in heroes_in_match:
-            hero_index = playerinmatch.hero_id
-            if playerinmatch.player_slot > 127:
-                hero_index += n_heroes
-            data[hero_index] = 1
+        if self.data is not None:
+            return self.data, int(self.radiant_win)
+        else:
+            n_heroes = Hero.objects.all().count()
+            heroes_in_match = self.playerinmatch_set.all()
+            data = numpy.zeros((n_heroes * 2) + 2)
+            for playerinmatch in heroes_in_match:
+                hero_index = playerinmatch.hero_id
+                if playerinmatch.player_slot > 127:
+                    hero_index += n_heroes
+                data[hero_index] = 1
+            self.data = data
+            self.save()
         return data, int(self.radiant_win)
 
     @staticmethod
@@ -166,7 +188,7 @@ class Match(models.Model):
     def batch_get_matches_from_api(n=10):
         last_match = 0
         counter = 0
-        requested_matches = 100
+        requested_matches = 500
         starting_match_id = 0
         match_ids = []
         for i in range(0, n, requested_matches):
@@ -291,6 +313,7 @@ class Match(models.Model):
                     player_in_match.level = player_in_game['level']
                     player_in_match.save()
                 self.has_been_processed = True
+                self.data = self.get_data_array()
                 self.save()
             return data
         except urllib2.HTTPError as e:
@@ -299,6 +322,9 @@ class Match(models.Model):
     @staticmethod
     def get_matches_for_hero_id(hero_id):
         return Match.objects.filter(playerinmatch__hero__pk=hero_id)
+
+    def get_heroes_for_match(self):
+        return Hero.objects.filter(playerinmatch__match__match_id=self.match_id)
 
 
 class PlayerInMatch(models.Model):
@@ -361,6 +387,10 @@ class ScikitModel(models.Model):
         model.task_id = async_result.id
         model.save()
         return model
+
+    @staticmethod
+    def get_all_ready():
+        return ScikitModel.objects.filter(is_ready=True).order_by('-created')
 
 
 class MatchPrediction(models.Model):

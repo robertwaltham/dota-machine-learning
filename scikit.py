@@ -1,8 +1,19 @@
 __author__ = 'Robert Waltham'
 import numpy as np
+import numpy.random as random
 from sklearn import svm, preprocessing
 from DotaStats.models import Match, ScikitModel
 import json
+import time
+
+from contextlib import contextmanager
+
+@contextmanager
+def timeit_context(name):
+    startTime = time.time()
+    yield
+    elapsedTime = time.time() - startTime
+    print('[{}] finished in {} ms'.format(name, int(elapsedTime * 1000)))
 
 
 class DotaModel():
@@ -13,27 +24,30 @@ class DotaModel():
     @staticmethod
     def build():
         n_tests = 100
-        matches = Match.objects.filter(has_been_processed=True)
+        with timeit_context('Querying Matches'):
+            matches = list(Match.objects.filter(has_been_processed=True))
+
+        with timeit_context('Shuffling Matches'):
+            random.shuffle(matches)
+
         clf = svm.SVC()
         match_features = []
         match_win = []
 
-        for match in matches[n_tests:]:
-            match_data, win = match.get_data_array()
-            match_features.append(match_data)
-            match_win.append(win)
+        with timeit_context('Extracting Data'):
+            for match in matches:
+                match_data, win = match.get_data_array()
+                match_features.append(match_data)
+                match_win.append(win)
 
-        clf.fit(match_features, match_win)
+        with timeit_context('Fitting Model'):
+            clf.fit(match_features[n_tests:], match_win[n_tests:])
 
-        results = []
-        count = 0
-        for match in matches[:n_tests]:
-            match_data, win = match.get_data_array()
-            predict = clf.predict(match_data)[0]
-            results.append({'id': match.match_id, 'win': win, 'predict': predict})
-            if win == predict:
-                count += 1
-        return results, (float(count) / float(n_tests)) * 100
+        with timeit_context('Scoring Model'):
+            score = clf.score(match_features[:n_tests], match_win[:n_tests]) * 100
+
+        return len(matches), score
+
 
     @staticmethod
     def build_and_store(n_matches, scikit_model_id):

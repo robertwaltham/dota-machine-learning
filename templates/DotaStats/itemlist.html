@@ -9,7 +9,7 @@
             {% for item in items %}
                 <tr>
                     <td>
-                        {{ item.item_id }}
+                        <img src="{{ item.get_image }}">
                     </td>
                     <td>
                         {{ item.name }}
