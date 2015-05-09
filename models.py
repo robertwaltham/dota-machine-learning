@@ -186,6 +186,7 @@ class Match(models.Model):
 
     @staticmethod
     def batch_get_matches_from_api(n=10):
+        from DotaStats.tasks import get_details, build_and_test
         last_match = 0
         counter = 0
         requested_matches = 500
@@ -210,7 +211,7 @@ class Match(models.Model):
                                                                          lobby_type=match['lobby_type'])
                         new_match.save()
                         if created:
-                            tasks.get_details.apply_async((new_match.match_id,), countdown=counter)
+                            get_details.apply_async((new_match.match_id,), countdown=counter)
                             counter += 1
                     if data['result']['results_remaining'] < requested_matches:
                         break
@@ -220,11 +221,12 @@ class Match(models.Model):
                 return 'HTTP error({0}): {1}'.format(e.errno, e.strerror)
 
         if starting_match_id > 0:
-            tasks.build_and_test.apply_async((starting_match_id, match_ids), countdown=counter)
+            build_and_test.apply_async((starting_match_id, match_ids), countdown=counter)
         return 'Created: {0}'.format(counter)
 
     @staticmethod
     def get_new_matches_from_api():
+        from DotaStats.tasks import get_details
         url = Match.get_match_api_url()
         try:
             data = json.load(urllib2.urlopen(url))
@@ -238,7 +240,7 @@ class Match(models.Model):
                                                                      lobby_type=match['lobby_type'])
                     new_match.save()
                     if created:
-                        tasks.get_details.apply_async((new_match.match_id,), countdown=counter)
+                        get_details.apply_async((new_match.match_id,), countdown=counter)
                         counter += 1
             return counter
         except urllib2.HTTPError as e:
@@ -256,10 +258,11 @@ class Match(models.Model):
 
     @staticmethod
     def batch_process_matches():
+        from DotaStats.tasks import get_details
         unprocessed = Match.objects.filter(has_been_processed=False).order_by('match_id')[:100]
         counter = 0
         for match in unprocessed:
-            tasks.get_details.apply_async((match.match_id,), countdown=counter)
+            get_details.apply_async((match.match_id,), countdown=counter)
             counter += 1
         return unprocessed
 
@@ -445,5 +448,4 @@ class MatchPrediction(models.Model):
         return prediction
 
 #important: has to be last for circular import crap
-import DotaStats.tasks as tasks
 from .scikit import DotaModel
