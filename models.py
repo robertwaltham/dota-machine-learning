@@ -210,7 +210,7 @@ class Match(models.Model):
                                                                          lobby_type=match['lobby_type'])
                         new_match.save()
                         if created:
-                            get_details.apply_async((new_match.match_id,), countdown=counter)
+                            tasks.get_details.apply_async((new_match.match_id,), countdown=counter)
                             counter += 1
                     if data['result']['results_remaining'] < requested_matches:
                         break
@@ -220,7 +220,7 @@ class Match(models.Model):
                 return 'HTTP error({0}): {1}'.format(e.errno, e.strerror)
 
         if starting_match_id > 0:
-            build_and_test.apply_async((starting_match_id, match_ids), countdown=counter)
+            tasks.build_and_test.apply_async((starting_match_id, match_ids), countdown=counter)
         return 'Created: {0}'.format(counter)
 
     @staticmethod
@@ -238,7 +238,7 @@ class Match(models.Model):
                                                                      lobby_type=match['lobby_type'])
                     new_match.save()
                     if created:
-                        get_details.apply_async((new_match.match_id,), countdown=counter)
+                        tasks.get_details.apply_async((new_match.match_id,), countdown=counter)
                         counter += 1
             return counter
         except urllib2.HTTPError as e:
@@ -259,7 +259,7 @@ class Match(models.Model):
         unprocessed = Match.objects.filter(has_been_processed=False).order_by('match_id')[:100]
         counter = 0
         for match in unprocessed:
-            get_details.apply_async((match.match_id,), countdown=counter)
+            tasks.get_details.apply_async((match.match_id,), countdown=counter)
             counter += 1
         return unprocessed
 
@@ -383,7 +383,7 @@ class ScikitModel(models.Model):
     def create_model():
         model = ScikitModel()
         model.save()
-        async_result = build_model.apply_async((3000, model.id))
+        async_result = tasks.build_model.apply_async((3000, model.id))
         model.task_id = async_result.id
         model.save()
         return model
@@ -445,5 +445,5 @@ class MatchPrediction(models.Model):
         return prediction
 
 #important: has to be last for circular import crap
-from .tasks import get_details, build_model, build_and_test
+import DotaStats.tasks as tasks
 from .scikit import DotaModel
