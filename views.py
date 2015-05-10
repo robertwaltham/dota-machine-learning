@@ -21,6 +21,13 @@ import json
 import numpy as np
 
 
+class LoginRequiredMixin(object):
+    @classmethod
+    def as_view(cls, **initkwargs):
+        view = super(LoginRequiredMixin, cls).as_view(**initkwargs)
+        return login_required(view)
+
+
 class AJAXListMixin(MultipleObjectMixin):
     def get(self, request, *args, **kwargs):
         return http.HttpResponse(serializers.serialize('json', self.get_queryset()))
@@ -37,26 +44,26 @@ class IndexView(TemplateView):
         context['models'] = ScikitModel.objects.filter(is_ready=True).count()
         return context
 
-@login_required(login_url=reverse('login'))
-class LoadMatchesFromAPI(TemplateView):
+
+class LoadMatchesFromAPI(LoginRequiredMixin, TemplateView):
     def get(self, request, *args, **kwargs):
         load_matches.delay()
         return http.HttpResponse(json.dumps({'status': 'ok'}))
 
-@login_required(login_url=reverse('login'))
-class LoadDetailsForMatch(AJAXListMixin, ListView):
+
+class LoadDetailsForMatch(LoginRequiredMixin, AJAXListMixin, ListView):
     def get_queryset(self):
         match = Match.get_unprocessed_match(1)
         match.load_details_from_api()
         return [match]
 
-@login_required(login_url=reverse('login'))
-class LoadDetailsForAll(AJAXListMixin, ListView):
+
+class LoadDetailsForAll(LoginRequiredMixin, AJAXListMixin, ListView):
     def get_queryset(self):
         return Match.batch_process_matches()
 
 
-class AjaxGetMatchList(AJAXListMixin, ListView):
+class AjaxGetMatchList(LoginRequiredMixin, AJAXListMixin, ListView):
     def get_queryset(self):
         return Match.get_all()
 
