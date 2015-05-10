@@ -26,7 +26,33 @@
             <a class="navbar-brand" href="{% url 'items' %}">Items</a>
             <a class="navbar-brand" href="{% url 'create_prediction' %}">Predict</a>
             <a class="navbar-brand" href="{% url 'build-test' %}">Test</a>
+             <ul class="nav navbar-nav navbar-right">
+                {% if user.is_authenticated %}
+                    <li class="dropdown active">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">{{ user.username }} <b
+                                class="caret"></b></a>
+                        <ul class="dropdown-menu">
+                            <li><a href="{% url 'logout' %}">Log Out</a></li>
+                        </ul>
+                    </li>
+                {% else %}
+                    <li class="active">
+                        <form method="post" class="navbar-form navbar-left" action="{% url 'login' %}">
+                            {% csrf_token %}
+                            <div class="form-group">
+                                <input type="text" class="form-control" placeholder="Username" name="username">
+                            </div>
+                            <div class="form-group">
+                                <input type="password" class="form-control" placeholder="Password" name="password">
+                            </div>
+                            <button class="btn btn-default" type="submit">Login</button>
+                        </form>
+                    </li>
+                {% endif %}
+
+            </ul>
         </div>
+
     </div>
 </nav>
 

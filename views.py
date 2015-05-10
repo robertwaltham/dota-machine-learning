@@ -1,18 +1,24 @@
-from django.views.generic import DetailView, View, TemplateView, ListView
+from django.views.generic import DetailView, View, TemplateView, ListView, FormView
 from django.views.generic.edit import CreateView, UpdateView, DeleteView
-
 from django.views.generic.list import MultipleObjectMixin
+
+from django.shortcuts import redirect, get_object_or_404
+
+from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required
+
 from django.core import serializers
 from django.core.urlresolvers import reverse
-
 from django import http
+
 from models import Match, Item, Hero, PlayerInMatch, ScikitModel, MatchPrediction
+from forms import PredictionForm
+from tasks import load_matches
+from scikit import DotaModel
+
 import json
 import numpy as np
-from scikit import DotaModel
-from forms import PredictionForm
-
-from tasks import load_matches
 
 
 class AJAXListMixin(MultipleObjectMixin):
@@ -31,20 +37,20 @@ class IndexView(TemplateView):
         context['models'] = ScikitModel.objects.filter(is_ready=True).count()
         return context
 
-
+@login_required(login_url=reverse('login'))
 class LoadMatchesFromAPI(TemplateView):
     def get(self, request, *args, **kwargs):
         load_matches.delay()
         return http.HttpResponse(json.dumps({'status': 'ok'}))
 
-
+@login_required(login_url=reverse('login'))
 class LoadDetailsForMatch(AJAXListMixin, ListView):
     def get_queryset(self):
         match = Match.get_unprocessed_match(1)
         match.load_details_from_api()
         return [match]
 
-
+@login_required(login_url=reverse('login'))
 class LoadDetailsForAll(AJAXListMixin, ListView):
     def get_queryset(self):
         return Match.batch_process_matches()
@@ -139,3 +145,32 @@ class CreatePredictionView(CreateView):
         context = super(CreatePredictionView, self).get_context_data(**kwargs)
         context['predictions'] = MatchPrediction.objects.all()
         return context
+
+
+class LogInView(FormView):
+    template_name = 'DotaStats/login.html'
+    form_class = AuthenticationForm
+
+    def form_valid(self, form):
+        form.clean()
+        if form.get_user() is not None:
+            login(self.request, form.get_user())
+        return super(LogInView, self).form_valid(form)
+
+    def get_success_url(self):
+        next = self.request.GET.get('next', None)
+        if next is not None:
+            return next
+        else:
+            return reverse('index')
+
+    def get_context_data(self, **kwargs):
+        context = super(LogInView, self).get_context_data(**kwargs)
+        context['next'] = self.request.GET.get('next', None)
+        return context
+
+
+class LogOutView(View):
+    def get(self, request):
+        logout(request)
+        return redirect(reverse('index'))

@@ -384,9 +384,10 @@ class ScikitModel(models.Model):
 
     @staticmethod
     def create_model():
+        from DotaStats.tasks import build_model
         model = ScikitModel()
         model.save()
-        async_result = tasks.build_model.apply_async((3000, model.id))
+        async_result = build_model.apply_async((3000, model.id))
         model.task_id = async_result.id
         model.save()
         return model

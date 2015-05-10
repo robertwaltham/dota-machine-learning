@@ -15,6 +15,8 @@ urlpatterns = patterns('',
     url(r'^items/', views.ItemListView.as_view(), name='items'),
     url(r'^heroes/', views.HeroListView.as_view(), name='heroes'),
     url(r'^matches/', views.MatchList.as_view(), name='matches'),
-    url(r'^predict/', views.CreatePredictionView.as_view(), name='create_prediction')
+    url(r'^predict/', views.CreatePredictionView.as_view(), name='create_prediction'),
+    url(r'^login/', views.LogInView.as_view(), name='login'),
+    url(r'^logout/', views.LogOutView.as_view(), name='logout'),
 
 )
