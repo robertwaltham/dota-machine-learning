@@ -1,7 +1,7 @@
 __author__ = 'Robert Waltham'
 import numpy as np
 import numpy.random as random
-from sklearn import svm, preprocessing
+from sklearn import svm, preprocessing, neighbors
 from DotaStats.models import Match, ScikitModel
 import json
 import time
@@ -30,17 +30,18 @@ class DotaModel():
         with timeit_context('Shuffling Matches'):
             random.shuffle(matches)
 
-        clf = svm.SVC()
         match_features = []
         match_win = []
 
-        with timeit_context('Extracting Data'):
+        with timeit_context('Building Data'):
             for match in matches:
                 match_data, win = match.get_data_array()
-                match_features.append(match_data)
-                match_win.append(win)
+                if match_data is not None:
+                    match_features.append(match_data)
+                    match_win.append(win)
 
-        with timeit_context('Fitting Model'):
+        with timeit_context('Building Model'):
+            clf = svm.SVC()
             clf.fit(match_features[n_tests:], match_win[n_tests:])
 
         with timeit_context('Scoring Model'):
@@ -79,30 +80,39 @@ class DotaModel():
         matches = Match.objects.filter(match_id__lt=starting_match_id)
         model = ScikitModel()
 
-        clf = svm.SVC()
-        match_features = []
-        match_win = []
-
+        match_win = np.array([])
+        match_features = np.array([])
         for match in matches:
             match_data, win = match.get_data_array()
-            match_features.append(match_data)
-            match_win.append(win)
+            np.append(match_features, match_data)
+            np.append(match_win, win)
 
-        clf.fit(match_features, match_win)
-        model.picked_model = clf
-        model.match_count = len(matches)
-        model.is_ready = True
-        model.save()
 
         results = []
-        test_matches = []
-        for match_id in test_match_ids:
-            test_matches.append(Match.objects.get(match_id=match_id))
-
-        for match in test_matches:
-            match_data, win = match.get_data_array()
-            prediction = clf.predict(match_data)[0]
-            results.append({'prediction': prediction, 'win': win, 'match_id': match.match_id})
+        # clf = svm.SVC()
+        # match_features = []
+        # match_win = []
+        #
+        # for match in matches:
+        #     match_data, win = match.get_data_array()
+        #     match_features.append(match_data)
+        #     match_win.append(win)
+        #
+        # clf.fit(match_features, match_win)
+        # model.picked_model = clf
+        # model.match_count = len(matches)
+        # model.is_ready = True
+        # model.save()
+        #
+        # results = []
+        # test_matches = []
+        # for match_id in test_match_ids:
+        #     test_matches.append(Match.objects.get(match_id=match_id))
+        #
+        # for match in test_matches:
+        #     match_data, win = match.get_data_array()
+        #     prediction = clf.predict(match_data)[0]
+        #     results.append({'prediction': prediction, 'win': win, 'match_id': match.match_id})
         return results
 
 

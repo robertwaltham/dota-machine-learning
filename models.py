@@ -15,8 +15,9 @@ from djcelery.picklefield import PickledObjectField
 api_base = 'https://api.steampowered.com'
 match_history = '/IDOTA2Match_570/GetMatchHistory/V001/'
 details = '/IDOTA2Match_570/GetMatchDetails/V001/?match_id={0}&key={1}'
-heroes = 'https://api.steampowered.com/IEconDOTA2_570/GetHeroes/v001/?key='
-items = 'https://api.steampowered.com/IEconDOTA2_570/GetGameItems/v0001/?key='
+heroes = 'https://api.steampowered.com/IEconDOTA2_570/GetHeroes/v001/?key={0}&language={1}'
+items = 'https://api.steampowered.com/IEconDOTA2_570/GetGameItems/v0001/?key={0}&language={1}'
+language = 'en_us'
 
 
 class Player(models.Model):
@@ -26,11 +27,12 @@ class Player(models.Model):
 
 class Hero(models.Model):
     name = models.CharField(max_length=255)
+    localized_name = models.CharField(max_length=255, default='')
     hero_id = models.IntegerField(primary_key=True, default=0)
 
     @staticmethod
     def load_heroes_from_api():
-        url = heroes + DotaAPIKey
+        url = heroes.format(DotaAPIKey, language)
         try:
             data = json.load(urllib2.urlopen(url))
             print(json.dumps(data))
@@ -40,6 +42,7 @@ class Hero(models.Model):
                 for new_hero in data['result']['heroes']:
                     hero, created = Hero.objects.get_or_create(hero_id=new_hero['id'])
                     hero.name = new_hero['name']
+                    hero.localized_name = new_hero['localized_name']
                     hero.save()
             return result
         except urllib2.HTTPError as e:
@@ -54,28 +57,33 @@ class Hero(models.Model):
         return 0
 
     def get_image(self):
-        return static('image/heroes/' + self.__unicode__() + '.png')
+        return static('image/heroes/' + self.name[14:] + '.png')
 
     def get_small_image(self):
         if self.hero_id > 0:
-            return static('image/small_heroes/' + self.__unicode__() + '.png')
+            return static('image/small_heroes/' + self.name[14:] + '.png')
         else:
             return ''
 
     def __unicode__(self):
-        return self.name[14:]
+        return self.localized_name
 
 
 class Item(models.Model):
     name = models.CharField(max_length=255)
+    localized_name = models.CharField(max_length=255, default='')
     item_id = models.IntegerField(primary_key=True, default=0)
+    recipe = models.BooleanField(default=False)
+    cost = models.IntegerField(default=0)
+    secret_shop = models.BooleanField(default=False)
+    side_shop = models.BooleanField(default=False)
 
     def get_image(self):
-        return static('image/items/' + self.__unicode__() + '.png')
+        return static('image/items/' + self.name[5:] + '.png')
 
     @staticmethod
     def load_items_from_api():
-        url = items + DotaAPIKey
+        url = items.format(DotaAPIKey, language)
         try:
             data = json.load(urllib2.urlopen(url))
             result = 0
@@ -85,13 +93,18 @@ class Item(models.Model):
                 for new_item in data['result']['items']:
                     item, created = Item.objects.get_or_create(item_id=new_item['id'])
                     item.name = new_item['name']
+                    item.recipe = bool(new_item['recipe'])
+                    item.secret_shop = bool(new_item['secret_shop'])
+                    item.side_shop = bool(new_item['side_shop'])
+                    item.localized_name = new_item['localized_name']
+                    item.cost = int(new_item['cost'])
                     item.save()
             return result
         except urllib2.HTTPError as e:
             return "HTTP error({0}): {1}".format(e.errno, e.strerror)
 
     def __unicode__(self):
-        return self.name[5:]
+        return self.localized_name
 
 
 # Game Modes
@@ -144,11 +157,16 @@ class Match(models.Model):
         return str(self.match_id)
 
     def get_data_array(self):
-        if self.data is not None:
-            return self.data, int(self.radiant_win)
-        else:
+        # if self.data is not None:
+        #     print '{0} - {1}'.format(self.match_id, self.data[0])
+        #     return self.data[0], int(self.radiant_win)
+        # else:
             n_heroes = Hero.objects.all().count()
             heroes_in_match = self.playerinmatch_set.all()
+
+            if len(heroes_in_match) < 10:
+                return None, 0
+
             data = numpy.zeros((n_heroes * 2) + 2)
             for playerinmatch in heroes_in_match:
                 hero_index = playerinmatch.hero_id
@@ -157,7 +175,7 @@ class Match(models.Model):
                 data[hero_index] = 1
             self.data = data
             self.save()
-        return data, int(self.radiant_win)
+            return data, int(self.radiant_win)
 
     @staticmethod
     def get_all():
@@ -220,8 +238,8 @@ class Match(models.Model):
             except urllib2.HTTPError as e:
                 return 'HTTP error({0}): {1}'.format(e.errno, e.strerror)
 
-        if starting_match_id > 0:
-            build_and_test.apply_async((starting_match_id, match_ids), countdown=counter)
+        # if starting_match_id > 0:
+        #     build_and_test.apply_async((starting_match_id, match_ids), countdown=counter)
         return 'Created: {0}'.format(counter)
 
     @staticmethod
@@ -355,6 +373,9 @@ class PlayerInMatch(models.Model):
     tower_damage = models.SmallIntegerField()
     hero_healing = models.SmallIntegerField()
     level = models.SmallIntegerField()
+
+    class Meta:
+        unique_together = (("match", "player_slot"),)
 
     def __unicode__(self):
         return 'Match: {0}, Hero: {1}, Team: {2}'.format(self.match_id, self.hero, self.team())
