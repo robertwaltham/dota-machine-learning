@@ -33,6 +33,7 @@ class AJAXListMixin(MultipleObjectMixin):
         return http.HttpResponse(serializers.serialize('json', self.get_queryset()))
 
 
+
 class IndexView(TemplateView):
     template_name = 'DotaStats/landing.html'
 
