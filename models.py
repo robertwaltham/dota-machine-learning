@@ -1,13 +1,13 @@
 from __future__ import absolute_import
-
-from django.db import models
-from django.templatetags.static import static
-
 import json
 import urllib2
 import datetime
 import pytz
 import numpy
+
+from django.db import models
+from django.templatetags.static import static
+from django.core import serializers
 
 from website.settings import DotaAPIKey
 from djcelery.picklefield import PickledObjectField
@@ -153,33 +153,17 @@ class Match(models.Model):
         compress=False, null=True, default=None, editable=False,
     )
 
-    def __unicode__(self):
-        return str(self.match_id)
-
-    def get_data_array(self):
-        # if self.data is not None:
-        #     print '{0} - {1}'.format(self.match_id, self.data[0])
-        #     return self.data[0], int(self.radiant_win)
-        # else:
-            n_heroes = Hero.objects.all().count()
-            heroes_in_match = self.playerinmatch_set.all()
-
-            if len(heroes_in_match) < 10:
-                return None, 0
-
-            data = numpy.zeros((n_heroes * 2) + 2)
-            for playerinmatch in heroes_in_match:
-                hero_index = playerinmatch.hero_id
-                if playerinmatch.player_slot > 127:
-                    hero_index += n_heroes
-                data[hero_index] = 1
-            self.data = data
-            self.save()
-            return data, int(self.radiant_win)
+    @staticmethod
+    def get_matches_for_hero_id(hero_id):
+        return Match.objects.filter(playerinmatch__hero__pk=hero_id)
 
     @staticmethod
     def get_all():
         return Match.objects.all()
+
+    @staticmethod
+    def get_all_limited():
+        return list(Match.objects.all().values('match_id', 'duration', 'radiant_win'))
 
     @staticmethod
     def get_match_api_url(game_mode=0, skill=0, date_min=0, date_max=0, min_players=10,
@@ -238,8 +222,6 @@ class Match(models.Model):
             except urllib2.HTTPError as e:
                 return 'HTTP error({0}): {1}'.format(e.errno, e.strerror)
 
-        # if starting_match_id > 0:
-        #     build_and_test.apply_async((starting_match_id, match_ids), countdown=counter)
         return 'Created: {0}'.format(counter)
 
     @staticmethod
@@ -288,6 +270,10 @@ class Match(models.Model):
     @staticmethod
     def get_count_unprocessed():
         return Match.objects.filter(has_been_processed=True).count()
+
+    @staticmethod
+    def get_count():
+        return Match.objects.count()
 
     def load_details_from_api(self):
         url = api_base + details.format(self.match_id, DotaAPIKey)
@@ -340,12 +326,31 @@ class Match(models.Model):
         except urllib2.HTTPError as e:
             return "HTTP error({0}): {1}".format(e.errno, e.strerror)
 
-    @staticmethod
-    def get_matches_for_hero_id(hero_id):
-        return Match.objects.filter(playerinmatch__hero__pk=hero_id)
-
     def get_heroes_for_match(self):
         return Hero.objects.filter(playerinmatch__match__match_id=self.match_id)
+
+    def __unicode__(self):
+        return str(self.match_id)
+
+    def get_data_array(self):
+        if self.data is not None:
+            return self.data[0], int(self.radiant_win)
+        else:
+            n_heroes = Hero.objects.all().count()
+            heroes_in_match = self.playerinmatch_set.all()
+
+            if len(heroes_in_match) < 10:
+                return None, 0
+
+            data = numpy.zeros((n_heroes * 2) + 2)
+            for playerinmatch in heroes_in_match:
+                hero_index = playerinmatch.hero_id
+                if playerinmatch.player_slot > 127:
+                    hero_index += n_heroes
+                data[hero_index] = 1
+            self.data = data
+            self.save()
+            return data, int(self.radiant_win)
 
 
 class PlayerInMatch(models.Model):

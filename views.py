@@ -26,10 +26,23 @@ class LoginRequiredMixin(object):
         return login_required(view)
 
 
-class AJAXListMixin(MultipleObjectMixin):
+class JSONResponseMixin(object):
 
-    def get(self, request, *args, **kwargs):
-        return http.HttpResponse(serializers.serialize('json', self.get_queryset()))
+    def render_to_json_response(self, context, **kwargs):
+        return http.JsonResponse(
+            self.get_data(context),
+            **kwargs
+        )
+
+    def get_data(self, context):
+        del context['view']
+        return context
+
+
+class JSONView(JSONResponseMixin, TemplateView):
+
+    def render_to_response(self, context, **response_kwargs):
+        return self.render_to_json_response(context, **response_kwargs)
 
 
 class IndexView(TemplateView):
@@ -44,52 +57,57 @@ class IndexView(TemplateView):
         return context
 
 
-class LoadMatchesFromAPI(LoginRequiredMixin, TemplateView):
+class AjaxLoadMatchesFromAPI(LoginRequiredMixin, JSONView):
 
-    def get(self, request, *args, **kwargs):
-        load_matches.delay()
-        return http.HttpResponse(json.dumps({'status': 'ok'}))
-
-
-class LoadDetailsForAll(LoginRequiredMixin, AJAXListMixin, ListView):
-
-    def get_queryset(self):
-        return Match.batch_process_matches()
+    def get_context_data(self, **kwargs):
+        Match.get_new_matches_from_api()
+        return super(AjaxLoadMatchesFromAPI, self).get_context_data(status='ok', **kwargs)
 
 
-class AjaxGetMatchList(LoginRequiredMixin, AJAXListMixin, ListView):
+class AjaxLoadDetailsForAll(LoginRequiredMixin, JSONView):
 
-    def get_queryset(self):
-        return Match.get_all()
-
-
-class LoadStaticDataView(View):
-
-    @staticmethod
-    def get(request):
-        heroes = Hero.load_heroes_from_api()
-        items = Item.load_items_from_api()
-        return http.HttpResponse(json.dumps({'heroes': heroes, 'items': items}))
+    def get_context_data(self, **kwargs):
+        return super(AjaxLoadDetailsForAll, self).get_context_data(count=Match.batch_process_matches(), **kwargs)
 
 
-class HeroDetail(DetailView):
+class AjaxGetMatchList(LoginRequiredMixin, JSONView):
+
+    def get_context_data(self, **kwargs):
+        return super(AjaxGetMatchList, self).get_context_data(matches=Match.get_all_limited(), **kwargs)
+
+
+class AjaxLoadStaticDataView(LoginRequiredMixin, JSONView):
+
+    def get_context_data(self, **kwargs):
+        return super(AjaxLoadStaticDataView, self).get_context_data(heroes=Hero.load_heroes_from_api(),
+                                                                    items=Item.load_items_from_api(), **kwargs)
+
+
+class AjaxGetMatchCount(JSONView):
+
+    def get_context_data(self, **kwargs):
+        return super(AjaxGetMatchCount, self).get_context_data(matches=Match.get_count(),
+                                                               unprocessed=Match.get_count_unprocessed(), **kwargs)
+
+
+class HeroDetailView(DetailView):
     template_name = 'DotaStats/hero.html'
     model = Hero
     context_object_name = 'hero'
 
     def get_context_data(self, **kwargs):
-        context = super(HeroDetail, self).get_context_data(**kwargs)
+        context = super(HeroDetailView, self).get_context_data(**kwargs)
         context['matches'] = PlayerInMatch.get_player_in_match_for_hero_id(self.object).order_by('-match_id')[:50]
         return context
 
 
-class MatchDetail(DetailView):
+class MatchDetailView(DetailView):
     template_name = 'DotaStats/match.html'
     model = Match
     context_object_name = 'match'
 
     def get_context_data(self, **kwargs):
-        context = super(MatchDetail, self).get_context_data(**kwargs)
+        context = super(MatchDetailView, self).get_context_data(**kwargs)
         data, v = self.object.get_data_array()
         context['data'] = np.array_str(data)
         return context
@@ -129,14 +147,14 @@ class ItemListView(ListView):
         return super(ItemListView, self).get_queryset().filter(item_id__gt=0)
 
 
-class MatchList(ListView):
+class MatchListView(ListView):
     template_name = 'DotaStats/matchlist.html'
     context_object_name = 'matches'
     model = Match
     paginate_by = 50
 
     def get_queryset(self):
-        return super(MatchList, self).get_queryset().order_by('-match_id')
+        return super(MatchListView, self).get_queryset().order_by('-match_id')
 
 
 class CreatePredictionView(CreateView):
