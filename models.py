@@ -333,12 +333,11 @@ class Match(models.Model):
     def __unicode__(self):
         return str(self.match_id)
 
-    def get_data_array(self):
+    def get_data_array(self, n_heroes):
         if self.data is not None:
-            return self.data[0], int(self.radiant_win)
+            return self.data, int(self.radiant_win)
         else:
-            n_heroes = Hero.objects.all().count()
-            heroes_in_match = self.playerinmatch_set.all()
+            heroes_in_match = self.playerinmatch.all()
 
             if len(heroes_in_match) < 10:
                 return None, 0

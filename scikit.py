@@ -2,7 +2,7 @@ __author__ = 'Robert Waltham'
 import numpy as np
 import numpy.random as random
 from sklearn import svm, preprocessing, neighbors
-from DotaStats.models import Match, ScikitModel
+from DotaStats.models import Match, ScikitModel, Hero
 import json
 import time
 
@@ -24,8 +24,10 @@ class DotaModel():
     @staticmethod
     def build():
         n_tests = 100
+        n_heroes = Hero.objects.all().count()
+
         with timeit_context('Querying Matches'):
-            matches = list(Match.objects.filter(has_been_processed=True))
+            matches = list(Match.objects.filter(has_been_processed=True)[:1000].prefetch_related('playerinmatch'))
 
         with timeit_context('Shuffling Matches'):
             random.shuffle(matches)
@@ -35,7 +37,7 @@ class DotaModel():
 
         with timeit_context('Building Data'):
             for match in matches:
-                match_data, win = match.get_data_array()
+                match_data, win = match.get_data_array(n_heroes)
                 if match_data is not None:
                     match_features.append(match_data)
                     match_win.append(win)
