@@ -33,7 +33,6 @@ class AJAXListMixin(MultipleObjectMixin):
         return http.HttpResponse(serializers.serialize('json', self.get_queryset()))
 
 
-
 class IndexView(TemplateView):
     template_name = 'DotaStats/landing.html'
 
@@ -127,9 +126,10 @@ class HeroListView(ListView):
 class ItemListView(ListView):
     template_name = 'DotaStats/itemlist.html'
     context_object_name = 'items'
-
+    model = Item
+    
     def get_queryset(self):
-        return Item.objects.filter(item_id__gt=0)
+        return super(ItemListView, self).get_queryset().filter(item_id__gt=0)
 
 
 class MatchList(ListView):
@@ -137,7 +137,9 @@ class MatchList(ListView):
     context_object_name = 'matches'
     model = Match
     paginate_by = 50
-    queryset = Match.objects.all().order_by('-match_id')
+
+    def get_queryset(self):
+        return super(MatchList, self).get_queryset().order_by('-match_id')
 
 
 class CreatePredictionView(CreateView):
