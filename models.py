@@ -321,7 +321,6 @@ class Match(models.Model):
                     player_in_match.level = player_in_game['level']
                     player_in_match.save()
                 self.has_been_processed = True
-                self.data = self.get_data_array()
                 self.save()
             return data
         except urllib2.HTTPError as e:
@@ -333,7 +332,9 @@ class Match(models.Model):
     def __unicode__(self):
         return str(self.match_id)
 
-    def get_data_array(self, n_heroes):
+    def get_data_array(self, n_heroes=None):
+        if not n_heroes:
+            n_heroes = Hero.objects.all().count()
         if self.data is not None:
             return self.data, int(self.radiant_win)
         else:
