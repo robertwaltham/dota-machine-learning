@@ -1,13 +1,13 @@
+import json
+import numpy as np
+
 from django.views.generic import DetailView, View, TemplateView, ListView, FormView
 from django.views.generic.edit import CreateView, UpdateView, DeleteView
 from django.views.generic.list import MultipleObjectMixin
-
 from django.shortcuts import redirect, get_object_or_404
-
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
-
 from django.core import serializers
 from django.core.urlresolvers import reverse
 from django import http
@@ -17,18 +17,17 @@ from forms import PredictionForm
 from tasks import load_matches
 from scikit import DotaModel
 
-import json
-import numpy as np
-
 
 class LoginRequiredMixin(object):
+
     @classmethod
-    def as_view(cls, **initkwargs):
-        view = super(LoginRequiredMixin, cls).as_view(**initkwargs)
+    def as_view(cls, *args, **kwargs):
+        view = super(LoginRequiredMixin, cls).as_view(*args, **kwargs)
         return login_required(view)
 
 
 class AJAXListMixin(MultipleObjectMixin):
+
     def get(self, request, *args, **kwargs):
         return http.HttpResponse(serializers.serialize('json', self.get_queryset()))
 
@@ -46,29 +45,26 @@ class IndexView(TemplateView):
 
 
 class LoadMatchesFromAPI(LoginRequiredMixin, TemplateView):
+
     def get(self, request, *args, **kwargs):
         load_matches.delay()
         return http.HttpResponse(json.dumps({'status': 'ok'}))
 
 
-class LoadDetailsForMatch(LoginRequiredMixin, AJAXListMixin, ListView):
-    def get_queryset(self):
-        match = Match.get_unprocessed_match(1)
-        match.load_details_from_api()
-        return [match]
-
-
 class LoadDetailsForAll(LoginRequiredMixin, AJAXListMixin, ListView):
+
     def get_queryset(self):
         return Match.batch_process_matches()
 
 
 class AjaxGetMatchList(LoginRequiredMixin, AJAXListMixin, ListView):
+
     def get_queryset(self):
         return Match.get_all()
 
 
 class LoadStaticDataView(View):
+
     @staticmethod
     def get(request):
         heroes = Hero.load_heroes_from_api()
@@ -100,6 +96,7 @@ class MatchDetail(DetailView):
 
 
 class BuildDataView(View):
+
     @staticmethod
     def get(request):
         model = ScikitModel.create_model()
@@ -127,7 +124,7 @@ class ItemListView(ListView):
     template_name = 'DotaStats/itemlist.html'
     context_object_name = 'items'
     model = Item
-    
+
     def get_queryset(self):
         return super(ItemListView, self).get_queryset().filter(item_id__gt=0)
 
@@ -163,14 +160,15 @@ class LogInView(FormView):
 
     def form_valid(self, form):
         form.clean()
-        if form.get_user() is not None:
-            login(self.request, form.get_user())
+        user = form.get_user()
+        if user is not None:
+            login(self.request, user)
         return super(LogInView, self).form_valid(form)
 
     def get_success_url(self):
-        next = self.request.GET.get('next', None)
-        if next is not None:
-            return next
+        next_url = self.request.GET.get('next', None)
+        if next_url is not None:
+            return next_url
         else:
             return reverse('index')
 
@@ -181,6 +179,7 @@ class LogInView(FormView):
 
 
 class LogOutView(View):
+
     def get(self, request):
         logout(request)
         return redirect(reverse('index'))
