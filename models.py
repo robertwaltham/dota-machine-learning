@@ -155,7 +155,8 @@ class Match(models.Model):
 
     @staticmethod
     def get_matches_for_hero_id(hero_id):
-        return Match.objects.filter(playerinmatch__hero__pk=hero_id)
+        return Match.objects.filter(playerinmatch__hero__pk=hero_id).order_by('-match_id').prefetch_related(
+            'playerinmatch', 'playerinmatch__hero')[:50]
 
     @staticmethod
     def get_all():
@@ -327,7 +328,7 @@ class Match(models.Model):
             return "HTTP error({0}): {1}".format(e.errno, e.strerror)
 
     def get_heroes_for_match(self):
-        return Hero.objects.filter(playerinmatch__match__match_id=self.match_id)
+        return Hero.objects.filter(heroinmatch__match__match_id=self.match_id)
 
     def __unicode__(self):
         return str(self.match_id)
@@ -352,12 +353,15 @@ class Match(models.Model):
             self.save()
             return data, int(self.radiant_win)
 
+    def get_hero_ids_in_match(self):
+        return self.playerinmatch_set.all().values('hero_id')
+
 
 class PlayerInMatch(models.Model):
-    match = models.ForeignKey(Match)
+    match = models.ForeignKey(Match, related_name='playerinmatch')
     player = models.ForeignKey(Player)
     player_slot = models.SmallIntegerField()
-    hero = models.ForeignKey(Hero)
+    hero = models.ForeignKey(Hero, related_name='heroinmatch')
     item_0 = models.ForeignKey(Item, related_name="item_0")
     item_1 = models.ForeignKey(Item, related_name="item_1")
     item_2 = models.ForeignKey(Item, related_name="item_2")

@@ -67,7 +67,7 @@ class AjaxLoadMatchesFromAPI(LoginRequiredMixin, JSONView):
 class AjaxLoadDetailsForAll(LoginRequiredMixin, JSONView):
 
     def get_context_data(self, **kwargs):
-        return super(AjaxLoadDetailsForAll, self).get_context_data(count=Match.batch_process_matches(), **kwargs)
+        return super(AjaxLoadDetailsForAll, self).get_context_data(count=len(Match.batch_process_matches()), **kwargs)
 
 
 class AjaxGetMatchList(LoginRequiredMixin, JSONView):
@@ -95,10 +95,12 @@ class HeroDetailView(DetailView):
     model = Hero
     context_object_name = 'hero'
 
+    def get_queryset(self):
+        return super(HeroDetailView, self).get_queryset()
+
     def get_context_data(self, **kwargs):
-        context = super(HeroDetailView, self).get_context_data(**kwargs)
-        context['matches'] = PlayerInMatch.get_player_in_match_for_hero_id(self.object).order_by('-match_id')[:50]
-        return context
+        return super(HeroDetailView, self).get_context_data(
+            matches=Match.get_matches_for_hero_id(self.object.hero_id), **kwargs)
 
 
 class MatchDetailView(DetailView):
@@ -154,7 +156,8 @@ class MatchListView(ListView):
     paginate_by = 50
 
     def get_queryset(self):
-        return super(MatchListView, self).get_queryset().order_by('-match_id')
+        return super(MatchListView, self).get_queryset().order_by('-match_id')\
+            .prefetch_related('playerinmatch', 'playerinmatch__hero')
 
 
 class CreatePredictionView(CreateView):
