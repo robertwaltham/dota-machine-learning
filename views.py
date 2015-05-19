@@ -1,20 +1,17 @@
 import json
-import numpy as np
 
 from django.views.generic import DetailView, View, TemplateView, ListView, FormView
-from django.views.generic.edit import CreateView, UpdateView, DeleteView
-from django.views.generic.list import MultipleObjectMixin
-from django.shortcuts import redirect, get_object_or_404
+from django.views.generic.edit import CreateView
+from django.views.generic.detail import SingleObjectMixin
+from django.shortcuts import redirect
 from django.contrib.auth.forms import AuthenticationForm
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
-from django.core import serializers
 from django.core.urlresolvers import reverse
 from django import http
 
-from models import Match, Item, Hero, PlayerInMatch, ScikitModel, MatchPrediction
+from models import Match, Item, Hero, ScikitModel, MatchPrediction
 from forms import PredictionForm
-from tasks import load_matches
 from scikit import DotaModel
 
 
@@ -90,6 +87,19 @@ class AjaxGetMatchCount(JSONView):
                                                                unprocessed=Match.get_count_unprocessed(), **kwargs)
 
 
+class AjaxUpdateMatchDetails(SingleObjectMixin, JSONView, LoginRequiredMixin):
+    model = Match
+    context_object_name = 'match'
+    object = None
+
+    def get_context_data(self, **kwargs):
+        match = self.get_object()
+        match.load_details_from_api()
+        return super(AjaxUpdateMatchDetails, self).get_context_data(
+            heroes=list(match.get_heroes_for_match().values('hero_id', 'localized_name')),
+            **kwargs)
+
+
 class HeroDetailView(DetailView):
     template_name = 'DotaStats/hero.html'
     model = Hero
@@ -108,11 +118,8 @@ class MatchDetailView(DetailView):
     model = Match
     context_object_name = 'match'
 
-    def get_context_data(self, **kwargs):
-        context = super(MatchDetailView, self).get_context_data(**kwargs)
-        data, v = self.object.get_data_array()
-        context['data'] = np.array_str(data)
-        return context
+    def get_queryset(self):
+        return super(MatchDetailView, self).get_queryset().prefetch_related('playerinmatch', 'playerinmatch__hero')
 
 
 class BuildDataView(View):

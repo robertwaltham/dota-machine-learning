@@ -7,7 +7,6 @@ import numpy
 
 from django.db import models
 from django.templatetags.static import static
-from django.core import serializers
 
 from website.settings import DotaAPIKey
 from djcelery.picklefield import PickledObjectField
@@ -18,6 +17,54 @@ details = '/IDOTA2Match_570/GetMatchDetails/V001/?match_id={0}&key={1}'
 heroes = 'https://api.steampowered.com/IEconDOTA2_570/GetHeroes/v001/?key={0}&language={1}'
 items = 'https://api.steampowered.com/IEconDOTA2_570/GetGameItems/v0001/?key={0}&language={1}'
 language = 'en_us'
+
+# Skill
+#     0 - Any
+#     1 - Normal
+#     2 - High
+#     3 - Very High
+
+leavers = {
+    0: 'n/a',
+    1: 'Disconnected',
+    2: 'Disconnected Too Long',
+    3: 'Abandoned',
+    4: 'Afk',
+    5: 'Never Connected',
+    6: 'Never Connected Too Long',
+}
+
+lobbies = {
+    -1: "Invalid",
+    0: "Public Matchmaking",
+    1: "Practice",
+    2: "Tournament",
+    3: "Tutorial",
+    4: "Co-op with bots",
+    5: "Team match",
+    6: "Solo Queue",
+    7: "Ranked",
+    8: "Solo Mid 1vs1"
+}
+
+game_modes = {
+    0: "Unknown",
+    1: "All Pick",
+    2: "Captain's Mode",
+    3: "Random Draft",
+    4: "Single Draft",
+    5: "All Random",
+    6: "Intro",
+    7: "Diretide",
+    8: "Reverse Captain's Mode",
+    9: "The Greeviling",
+    10: "Tutorial",
+    11: "Mid Only",
+    12: "Least Played",
+    13: "New Player Pool",
+    14: "Compendium Matchmaking",
+    16: "Captain's Draft"
+}
 
 
 class Player(models.Model):
@@ -57,13 +104,16 @@ class Hero(models.Model):
         return 0
 
     def get_image(self):
-        return static('image/heroes/' + self.name[14:] + '.png')
+        if self.hero_id > 0:
+            return static('image/heroes/' + self.name[14:] + '.png')
+        else:
+            return static('image/heroes/0.png')
 
     def get_small_image(self):
         if self.hero_id > 0:
             return static('image/small_heroes/' + self.name[14:] + '.png')
         else:
-            return ''
+            return static('image/heroes/0.png')
 
     def __unicode__(self):
         return self.localized_name
@@ -106,30 +156,6 @@ class Item(models.Model):
     def __unicode__(self):
         return self.localized_name
 
-
-# Game Modes
-#     0 - None
-#     1 - All Pick
-#     2 - Captain's Mode
-#     3 - Random Draft
-#     4 - Single Draft
-#     5 - All Random
-#     6 - Intro
-#     7 - Diretide
-#     8 - Reverse Captain's Mode
-#     9 - The Greeviling
-#     10 - Tutorial
-#     11 - Mid Only
-#     12 - Least Played
-#     13 - New Player Pool
-#     14 - Compendium Matchmaking
-#     16 - Captain's Draft
-#
-# Skill
-#     0 - Any
-#     1 - Normal
-#     2 - High
-#     3 - Very High
 
 class Match(models.Model):
     match_id = models.IntegerField(primary_key=True, default=0)
@@ -189,14 +215,15 @@ class Match(models.Model):
 
     @staticmethod
     def batch_get_matches_from_api(n=10):
-        from DotaStats.tasks import get_details, build_and_test
+        from DotaStats.tasks import get_details
         last_match = 0
         counter = 0
         requested_matches = 500
         starting_match_id = 0
         match_ids = []
         for i in range(0, n, requested_matches):
-            url = Match.get_match_api_url(matches_requested=requested_matches, start_at_match_id=last_match)
+            url = Match.get_match_api_url(game_mode=1, matches_requested=requested_matches,
+                                          start_at_match_id=last_match)
             print url
             try:
                 data = json.load(urllib2.urlopen(url))
@@ -228,7 +255,8 @@ class Match(models.Model):
     @staticmethod
     def get_new_matches_from_api():
         from DotaStats.tasks import get_details
-        url = Match.get_match_api_url()
+        url = Match.get_match_api_url(game_mode=1)
+        print url
         try:
             data = json.load(urllib2.urlopen(url))
             counter = 0
@@ -276,8 +304,11 @@ class Match(models.Model):
     def get_count():
         return Match.objects.count()
 
+    def get_details_url(self):
+        return api_base + details.format(self.match_id, DotaAPIKey)
+
     def load_details_from_api(self):
-        url = api_base + details.format(self.match_id, DotaAPIKey)
+        url = self.get_details_url()
         try:
             data = json.load(urllib2.urlopen(url))
             if data['result']:
@@ -292,34 +323,43 @@ class Match(models.Model):
                 self.first_blood_time = int(result['first_blood_time'])
                 self.lobby_type = int(result['lobby_type'])
                 self.human_players = int(result['human_players'])
+                self.game_mode = int(result['game_mode'])
                 for player_in_game in result['players']:
-                    player_in_match = PlayerInMatch()
-                    player_in_match.match_id = self.match_id
-                    player_in_match.player, created = \
+                    hero, created = Hero.objects.get_or_create(hero_id=player_in_game['hero_id'])
+                    item_0, created = Item.objects.get_or_create(item_id=player_in_game["item_0"])
+                    item_1, created = Item.objects.get_or_create(item_id=player_in_game["item_1"])
+                    item_2, created = Item.objects.get_or_create(item_id=player_in_game["item_2"])
+                    item_3, created = Item.objects.get_or_create(item_id=player_in_game["item_3"])
+                    item_4, created = Item.objects.get_or_create(item_id=player_in_game["item_4"])
+                    item_5, created = Item.objects.get_or_create(item_id=player_in_game["item_5"])
+                    player, created = \
                         Player.objects.get_or_create(account_id=player_in_game['account_id'])
-                    player_in_match.hero, created = Hero.objects.get_or_create(hero_id=player_in_game['hero_id'])
-                    player_in_match.item_0, created = Item.objects.get_or_create(item_id=player_in_game["item_0"])
-                    player_in_match.item_1, created = Item.objects.get_or_create(item_id=player_in_game["item_1"])
-                    player_in_match.item_2, created = Item.objects.get_or_create(item_id=player_in_game["item_2"])
-                    player_in_match.item_3, created = Item.objects.get_or_create(item_id=player_in_game["item_3"])
-                    player_in_match.item_4, created = Item.objects.get_or_create(item_id=player_in_game["item_4"])
-                    player_in_match.item_5, created = Item.objects.get_or_create(item_id=player_in_game["item_5"])
-                    player_in_match.player_slot = player_in_game['player_slot']
-                    player_in_match.kills = player_in_game['kills']
-                    player_in_match.deaths = player_in_game['deaths']
-                    player_in_match.assists = player_in_game['assists']
-                    player_in_match.leaver_status = player_in_game['leaver_status']
-                    player_in_match.gold = player_in_game['gold']
-                    player_in_match.last_hits = player_in_game['last_hits']
-                    player_in_match.denies = player_in_game['denies']
-                    player_in_match.gold_per_min = player_in_game['gold_per_min']
-                    player_in_match.xp_per_min = player_in_game['xp_per_min']
-                    player_in_match.gold_spent = player_in_game['gold_spent']
-                    player_in_match.hero_damage = player_in_game['hero_damage']
-                    player_in_match.tower_damage = player_in_game['tower_damage']
-                    player_in_match.hero_healing = player_in_game['hero_healing']
-                    player_in_match.level = player_in_game['level']
-                    player_in_match.save()
+
+                    PlayerInMatch.objects.get_or_create(
+                        match_id=self.match_id,
+                        player_slot=player_in_game['player_slot'],
+                        hero=hero,
+                        item_0=item_0,
+                        item_1=item_1,
+                        item_2=item_2,
+                        item_3=item_3,
+                        item_4=item_4,
+                        item_5=item_5,
+                        kills=player_in_game['kills'],
+                        deaths=player_in_game['deaths'],
+                        assists=player_in_game['assists'],
+                        leaver_status=player_in_game['leaver_status'],
+                        gold=player_in_game['gold'],
+                        last_hits=player_in_game['last_hits'],
+                        denies=player_in_game['denies'],
+                        gold_per_min=player_in_game['gold_per_min'],
+                        xp_per_min=player_in_game['xp_per_min'],
+                        gold_spent=player_in_game['gold_spent'],
+                        hero_damage=player_in_game['hero_damage'],
+                        tower_damage=player_in_game['tower_damage'],
+                        hero_healing=player_in_game['hero_healing'],
+                        level=player_in_game['level'],
+                        player=player)
                 self.has_been_processed = True
                 self.save()
             return data
@@ -355,6 +395,12 @@ class Match(models.Model):
 
     def get_hero_ids_in_match(self):
         return self.playerinmatch_set.all().values('hero_id')
+
+    def get_lobby_string(self):
+        return lobbies[int(self.lobby_type)]
+
+    def get_game_mode_string(self):
+        return game_modes[int(self.game_mode)]
 
 
 class PlayerInMatch(models.Model):
@@ -395,6 +441,9 @@ class PlayerInMatch(models.Model):
 
     def team(self):
         return 'Radiant' if self.player_slot <= 127 else 'Dire'
+
+    def get_leaver_string(self):
+        return leavers[int(self.leaver_status)]
 
 
 class ScikitModel(models.Model):
