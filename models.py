@@ -375,23 +375,23 @@ class Match(models.Model):
     def get_data_array(self, n_heroes=None):
         if not n_heroes:
             n_heroes = Hero.objects.all().count()
-        if self.data is not None:
-            return self.data, int(self.radiant_win)
-        else:
-            heroes_in_match = self.playerinmatch.all()
+        # if self.data is not None:
+        #     return self.data, int(self.radiant_win)
+        # else:
+        heroes_in_match = self.playerinmatch.all()
 
-            if len(heroes_in_match) < 10:
-                return None, 0
+        if len(heroes_in_match) < 10:
+            return None, 0
 
-            data = numpy.zeros((n_heroes * 2) + 2)
-            for playerinmatch in heroes_in_match:
-                hero_index = playerinmatch.hero_id
-                if playerinmatch.player_slot > 127:
-                    hero_index += n_heroes
-                data[hero_index] = 1
-            self.data = data
-            self.save()
-            return data, int(self.radiant_win)
+        data = numpy.zeros((n_heroes * 2) + 2)
+        for playerinmatch in heroes_in_match:
+            hero_index = playerinmatch.hero_id
+            if playerinmatch.player_slot > 127:
+                hero_index += n_heroes
+            data[hero_index] = 1
+            # self.data = data
+            # self.save()
+        return data, int(self.radiant_win)
 
     def get_hero_ids_in_match(self):
         return self.playerinmatch_set.all().values('hero_id')

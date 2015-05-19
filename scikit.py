@@ -24,10 +24,19 @@ class DotaModel():
     @staticmethod
     def build():
         n_tests = 100
+        n_matches = 2000
         n_heroes = Hero.objects.all().count()
+        valid_matches = []
 
         with timeit_context('Querying Matches'):
-            matches = list(Match.objects.filter(has_been_processed=True)[:1000].prefetch_related('playerinmatch'))
+            matches = list(Match.objects.filter(has_been_processed=True).order_by('?')[:n_matches].prefetch_related('playerinmatch'))
+            for match in matches:
+                is_valid = True
+                for playerinmatch in match.playerinmatch.all():
+                    if playerinmatch.hero_id == 0 or playerinmatch.leaver_status > 0:
+                        is_valid = False
+                if is_valid:
+                    valid_matches.append(match)
 
         with timeit_context('Shuffling Matches'):
             random.shuffle(matches)
@@ -36,7 +45,7 @@ class DotaModel():
         match_win = []
 
         with timeit_context('Building Data'):
-            for match in matches:
+            for match in valid_matches:
                 match_data, win = match.get_data_array(n_heroes)
                 if match_data is not None:
                     match_features.append(match_data)
@@ -49,7 +58,7 @@ class DotaModel():
         with timeit_context('Scoring Model'):
             score = clf.score(match_features[:n_tests], match_win[:n_tests]) * 100
 
-        return len(matches), score
+        return len(match_features), score
 
 
     @staticmethod
