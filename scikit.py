@@ -23,13 +23,13 @@ class DotaModel():
 
     @staticmethod
     def build():
-        n_tests = 100
-        n_matches = 2000
+        n_tests = 20
+        n_matches = 500
         n_heroes = Hero.objects.all().count()
         valid_matches = []
 
         with timeit_context('Querying Matches'):
-            matches = list(Match.objects.filter(has_been_processed=True).order_by('?')[:n_matches].prefetch_related('playerinmatch'))
+            matches = list(Match.objects.filter(has_been_processed=True, duration__gt=600).order_by('?')[:n_matches].prefetch_related('playerinmatch', 'playerinmatch__hero'))
             for match in matches:
                 is_valid = True
                 for playerinmatch in match.playerinmatch.all():
@@ -41,24 +41,34 @@ class DotaModel():
         with timeit_context('Shuffling Matches'):
             random.shuffle(matches)
 
-        match_features = []
-        match_win = []
+        training_set = valid_matches[n_tests:]
+        testing_set = valid_matches[:n_tests]
+        training_match_features = []
+        testing_match_features = []
+        training_match_win = []
+        testing_match_win = []
 
         with timeit_context('Building Data'):
-            for match in valid_matches:
+            for match in training_set:
                 match_data, win = match.get_data_array(n_heroes)
                 if match_data is not None:
-                    match_features.append(match_data)
-                    match_win.append(win)
+                    training_match_features.append(match_data)
+                    training_match_win.append(win)
+
+            for match in testing_set:
+                match_data, win = match.get_data_array(n_heroes)
+                if match_data is not None:
+                    testing_match_features.append(match_data)
+                    testing_match_win.append(win)
 
         with timeit_context('Building Model'):
             clf = svm.SVC()
-            clf.fit(match_features[n_tests:], match_win[n_tests:])
+            clf.fit(training_match_features, training_match_win)
 
         with timeit_context('Scoring Model'):
-            score = clf.score(match_features[:n_tests], match_win[:n_tests]) * 100
+            score = clf.score(testing_match_features, testing_match_win) * 100
 
-        return len(match_features), score
+        return len(valid_matches), score, training_set, testing_set
 
 
     @staticmethod

@@ -135,7 +135,7 @@ class BuildAndTestView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super(BuildAndTestView, self).get_context_data(**kwargs)
-        context['count'], context['accuracy'] = DotaModel.build()
+        context['count'], context['accuracy'], context['training'], context['testing'] = DotaModel.build()
         return context
 
 
