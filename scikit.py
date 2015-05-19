@@ -24,12 +24,12 @@ class DotaModel():
     @staticmethod
     def build():
         n_tests = 20
-        n_matches = 500
+        n_matches = 2000
         n_heroes = Hero.objects.all().count()
         valid_matches = []
 
         with timeit_context('Querying Matches'):
-            matches = list(Match.objects.filter(has_been_processed=True, duration__gt=600).order_by('?')[:n_matches].prefetch_related('playerinmatch', 'playerinmatch__hero'))
+            matches = list(Match.objects.filter(has_been_processed=True, duration__gt=600)[:n_matches].prefetch_related('playerinmatch', 'playerinmatch__hero'))
             for match in matches:
                 is_valid = True
                 for playerinmatch in match.playerinmatch.all():
@@ -39,7 +39,7 @@ class DotaModel():
                     valid_matches.append(match)
 
         with timeit_context('Shuffling Matches'):
-            random.shuffle(matches)
+            random.shuffle(valid_matches)
 
         training_set = valid_matches[n_tests:]
         testing_set = valid_matches[:n_tests]
