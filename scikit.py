@@ -22,16 +22,16 @@ class DotaModel():
         pass
 
     @staticmethod
-    def build():
-        n_tests = 20
-        n_matches = 2000
+    def build(n_matches=2000, n_tests=200, min_duration=600):
         n_heroes = Hero.objects.all().count()
         valid_matches = []
 
         with timeit_context('Querying Matches'):
-            matches = list(Match.objects.filter(has_been_processed=True, duration__gt=600)[:n_matches].prefetch_related('playerinmatch', 'playerinmatch__hero'))
+            matches = list(Match.objects.filter(has_been_processed=True, duration__gt=min_duration)[:n_matches].prefetch_related('playerinmatch', 'playerinmatch__hero'))
             for match in matches:
                 is_valid = True
+                if match.playerinmatch.all().count() != 10:
+                    is_valid = False
                 for playerinmatch in match.playerinmatch.all():
                     if playerinmatch.hero_id == 0 or playerinmatch.leaver_status > 0:
                         is_valid = False

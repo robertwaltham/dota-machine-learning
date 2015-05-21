@@ -15,3 +15,9 @@ class PredictionForm(forms.ModelForm):
         widgets = {
             'model': Select(attrs={'class': 'form-control'}),
         }
+
+
+class ModelTestForm(forms.Form):
+        n_matches = forms.IntegerField(label='Match Count', initial=2000)
+        n_tests = forms.IntegerField(label='Test Count', initial=200)
+        min_duration = forms.IntegerField(label='Min Duration', initial=600)

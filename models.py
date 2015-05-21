@@ -5,7 +5,7 @@ import datetime
 import pytz
 import numpy
 
-from django.db import models
+from django.db import models, IntegrityError
 from django.templatetags.static import static
 
 from website.settings import DotaAPIKey
@@ -13,6 +13,7 @@ from djcelery.picklefield import PickledObjectField
 
 api_base = 'https://api.steampowered.com'
 match_history = '/IDOTA2Match_570/GetMatchHistory/V001/'
+match_history_sequence = '/IDOTA2Match_570/GetMatchHistoryBySequenceNum/V001/?key={0}&start_at_match_seq_num={1}'
 details = '/IDOTA2Match_570/GetMatchDetails/V001/?match_id={0}&key={1}'
 heroes = 'https://api.steampowered.com/IEconDOTA2_570/GetHeroes/v001/?key={0}&language={1}'
 items = 'https://api.steampowered.com/IEconDOTA2_570/GetGameItems/v0001/?key={0}&language={1}'
@@ -197,6 +198,7 @@ class Match(models.Model):
                           start_at_match_id=0, matches_requested=100):
 
         url = api_base + match_history + '?key=' + DotaAPIKey
+        #api is bugged and doesn't honor game mode flag
         if game_mode > 0:
             url += '&game_mode=' + str(game_mode)
         if skill > 0:
@@ -274,6 +276,120 @@ class Match(models.Model):
             return counter
         except urllib2.HTTPError as e:
             return "HTTP error({0}): {1}".format(e.errno, e.strerror)
+
+    @staticmethod
+    def get_new_matches_by_sequence_from_api(match_seq_num=None):
+        from DotaStats.tasks import process_match
+        #get sequence number of latest match
+        if not match_seq_num:
+            latest_match_url = Match.get_match_api_url(matches_requested=1)
+            try:
+                latest_match_data = json.load(urllib2.urlopen(latest_match_url))
+                if latest_match_data['result']['status'] == 1:
+                    match_seq_num = latest_match_data['result']['matches'][0]['match_seq_num']
+                else:
+                    return "API Error {0}".format(latest_match_data['result']['status'])
+
+            except urllib2.HTTPError as e:
+                return "HTTP error({0}): {1}".format(e.errno, e.strerror)
+
+        api_has_more_matches = True
+        match_data = None
+        n_matches_created = 0
+        requests = 0
+        #get matches until there are no new matches
+        while api_has_more_matches:
+            match_seq_url = api_base + match_history_sequence.format(DotaAPIKey, match_seq_num)
+            try:
+                match_data = json.load(urllib2.urlopen(match_seq_url))
+            except urllib2.HTTPError as e:
+                return "HTTP error({0}): {1}".format(e.errno, e.strerror)
+
+            if match_data['result']['status'] == 1:
+                if len(match_data['result']['matches']) == 0:
+                    api_has_more_matches = False
+                    break
+
+                for match in match_data['result']['matches']:
+                    process_match.apply_async((match,))
+                    if int(match['match_seq_num']) > match_seq_num:
+                        match_seq_num = int(match['match_seq_num'])
+                    n_matches_created += 1
+            else:
+                return "API Error {0}".format(match_data['result']['status'])
+
+            #sanity
+            requests += 1
+            if requests >= 5:
+                break
+
+        return "Created: {0} Requests: {1}".format(n_matches_created, requests)
+
+    @staticmethod
+    def process_match_info(match):
+        start_time = datetime.datetime.fromtimestamp(match['start_time'])
+        new_match, created = Match.objects.get_or_create(
+            match_id=match['match_id'],
+            start_time=pytz.utc.localize(start_time),
+            match_seq_num=int(match['match_seq_num']),
+            lobby_type=int(match['lobby_type']),
+            radiant_win=bool(match['radiant_win']),
+            tower_status_radiant=int(match['tower_status_radiant']),
+            tower_status_dire=int(match['tower_status_dire']),
+            barracks_status_radiant=int(match['barracks_status_radiant']),
+            barracks_status_dire=int(match['barracks_status_dire']),
+            cluster=int(match['cluster']),
+            first_blood_time=int(match['first_blood_time']),
+            human_players=int(match['human_players']),
+            league_id=int(match['leagueid']),
+            game_mode=int(match['game_mode']),
+            duration=int(match['duration']),
+            has_been_processed=True)
+        for player_in_game in match['players']:
+            if 'account_id' in player_in_game:
+                accountid = int(player_in_game['account_id'])
+            else:
+                #id for anon players
+                accountid = 4294967295
+
+            if 'leaver_status' in player_in_game:
+                leaver_status = int(player_in_game['leaver_status'])
+            else:
+                leaver_status = 0
+
+            player, created = \
+                Player.objects.get_or_create(account_id=accountid)
+            try:
+                PlayerInMatch.objects.create(
+                    match_id=match['match_id'],
+                    player_slot=player_in_game['player_slot'],
+                    hero_id=player_in_game['hero_id'],
+                    item_0_id=player_in_game["item_0"],
+                    item_1_id=player_in_game["item_1"],
+                    item_2_id=player_in_game["item_2"],
+                    item_3_id=player_in_game["item_3"],
+                    item_4_id=player_in_game["item_4"],
+                    item_5_id=player_in_game["item_5"],
+                    kills=player_in_game['kills'],
+                    deaths=player_in_game['deaths'],
+                    assists=player_in_game['assists'],
+                    leaver_status=leaver_status,
+                    gold=player_in_game['gold'],
+                    last_hits=player_in_game['last_hits'],
+                    denies=player_in_game['denies'],
+                    gold_per_min=player_in_game['gold_per_min'],
+                    xp_per_min=player_in_game['xp_per_min'],
+                    gold_spent=player_in_game['gold_spent'],
+                    hero_damage=player_in_game['hero_damage'],
+                    tower_damage=player_in_game['tower_damage'],
+                    hero_healing=player_in_game['hero_healing'],
+                    level=player_in_game['level'],
+                    player=player)
+            except KeyError as e:
+                print e
+            except IntegrityError as e:
+                pass
+        return created
 
     @staticmethod
     def get_winrate():
@@ -400,7 +516,10 @@ class Match(models.Model):
         return lobbies[int(self.lobby_type)]
 
     def get_game_mode_string(self):
-        return game_modes[int(self.game_mode)]
+        try:
+            return game_modes[int(self.game_mode)]
+        except KeyError as e:
+            return "Unknown"
 
 
 class PlayerInMatch(models.Model):

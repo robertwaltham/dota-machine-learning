@@ -29,7 +29,7 @@ var stats = null;
             getMatches: function () {
                 $.getJSON(stats.urls.getMatch)
                     .done(function (data) {
-                        alert("Done");
+                        alert(data);
                     })
                     .fail(function () {
                         console.log("error");

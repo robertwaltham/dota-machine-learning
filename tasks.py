@@ -14,7 +14,7 @@ def get_details(match_id):
 
 @app.task
 def load_matches():
-    return Match.batch_get_matches_from_api()
+    return Match.get_new_matches_by_sequence_from_api()
 
 @app.task
 def build_model(n_matches, model_id):
@@ -30,3 +30,9 @@ def build_and_test(starting_match_id, test_match_ids):
             correct += 1
 
     return {"count": count, "correct": correct, "%": (float(correct) / float(count)) * 100}
+
+@app.task
+def process_match(match):
+    return Match.process_match_info(match)
+
+

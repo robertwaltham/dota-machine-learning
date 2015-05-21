@@ -11,7 +11,7 @@ from django.core.urlresolvers import reverse
 from django import http
 
 from models import Match, Item, Hero, ScikitModel, MatchPrediction
-from forms import PredictionForm
+from forms import PredictionForm, ModelTestForm
 from scikit import DotaModel
 
 
@@ -57,8 +57,8 @@ class IndexView(TemplateView):
 class AjaxLoadMatchesFromAPI(LoginRequiredMixin, JSONView):
 
     def get_context_data(self, **kwargs):
-        Match.get_new_matches_from_api()
-        return super(AjaxLoadMatchesFromAPI, self).get_context_data(status='ok', **kwargs)
+        return super(AjaxLoadMatchesFromAPI, self).get_context_data(
+            status=Match.get_new_matches_by_sequence_from_api(), **kwargs)
 
 
 class AjaxLoadDetailsForAll(LoginRequiredMixin, JSONView):
@@ -135,7 +135,14 @@ class BuildAndTestView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super(BuildAndTestView, self).get_context_data(**kwargs)
-        context['count'], context['accuracy'], context['training'], context['testing'] = DotaModel.build()
+        form = ModelTestForm(self.request.GET)
+        context['form'] = form
+        if form.is_valid():
+            data = form.cleaned_data
+            context['count'], context['accuracy'], context['training'], context['testing'] = \
+                DotaModel.build(data['n_matches'], data['n_tests'], data['min_duration'])
+        else:
+            context['count'], context['accuracy'], context['training'], context['testing'] = DotaModel.build()
         return context
 
 
@@ -163,6 +170,7 @@ class MatchListView(ListView):
     paginate_by = 50
 
     def get_queryset(self):
+        Match.get_new_matches_by_sequence_from_api()
         return super(MatchListView, self).get_queryset().order_by('-match_id')\
             .prefetch_related('playerinmatch', 'playerinmatch__hero')
 
