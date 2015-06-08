@@ -22,12 +22,12 @@ class DotaModel():
         pass
 
     @staticmethod
-    def build(n_matches=2000, n_tests=200, min_duration=600):
+    def build(n_matches=2000, n_tests=10, min_duration=600):
         n_heroes = Hero.objects.all().count()
         valid_matches = []
 
         with timeit_context('Querying Matches'):
-            matches = list(Match.objects.filter(has_been_processed=True, duration__gt=min_duration)[:n_matches].prefetch_related('playerinmatch', 'playerinmatch__hero'))
+            matches = list(Match.objects.filter(has_been_processed=True, duration__gt=min_duration, valid_for_model=True)[:n_matches].prefetch_related('playerinmatch', 'playerinmatch__hero'))
             for match in matches:
                 is_valid = True
                 if match.playerinmatch.all().count() != 10:

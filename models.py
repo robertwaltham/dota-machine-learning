@@ -67,6 +67,8 @@ game_modes = {
     16: "Captain's Draft"
 }
 
+valid_game_modes = [1, 2, 14, 16]
+
 
 class Player(models.Model):
     name = models.CharField(max_length=255)
@@ -176,6 +178,7 @@ class Match(models.Model):
     league_id = models.SmallIntegerField(default=0)
     game_mode = models.SmallIntegerField(default=0)
     skill = models.SmallIntegerField(default=0)
+    valid_for_model = models.BooleanField(default=False)
     data = PickledObjectField(
         compress=False, null=True, default=None, editable=False,
     )
@@ -327,6 +330,7 @@ class Match(models.Model):
 
     @staticmethod
     def process_match_info(match):
+        valid_match = True
         start_time = datetime.datetime.fromtimestamp(match['start_time'])
         new_match, created = Match.objects.get_or_create(
             match_id=match['match_id'],
@@ -345,6 +349,10 @@ class Match(models.Model):
             game_mode=int(match['game_mode']),
             duration=int(match['duration']),
             has_been_processed=True)
+
+        if not new_match.game_mode in valid_game_modes:
+            valid_match = False
+
         for player_in_game in match['players']:
             if 'account_id' in player_in_game:
                 accountid = int(player_in_game['account_id'])
@@ -356,6 +364,9 @@ class Match(models.Model):
                 leaver_status = int(player_in_game['leaver_status'])
             else:
                 leaver_status = 0
+
+            if leaver_status > 0:
+                valid_match = False
 
             player, created = \
                 Player.objects.get_or_create(account_id=accountid)
@@ -389,6 +400,8 @@ class Match(models.Model):
                 print e
             except IntegrityError as e:
                 pass
+        new_match.valid_for_model = valid_match
+        new_match.save()
         return created
 
     @staticmethod

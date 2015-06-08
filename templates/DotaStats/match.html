@@ -29,6 +29,7 @@
                         <td>first_blood_time</td>
                         <td>lobby_type</td>
                         <td>game mode</td>
+                        <td>valid</td>
                     </tr>
                 </thead>
                 <tbody>
@@ -47,6 +48,9 @@
                         </td>
                         <td>
                             {{ match.get_game_mode_string }}
+                        </td>
+                        <td>
+                            {{ match.valid_for_model }}
                         </td>
                     </tr>
                 </tbody>

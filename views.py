@@ -170,8 +170,7 @@ class MatchListView(ListView):
     paginate_by = 50
 
     def get_queryset(self):
-        Match.get_new_matches_by_sequence_from_api()
-        return super(MatchListView, self).get_queryset().order_by('-match_id')\
+        return super(MatchListView, self).get_queryset().filter(valid_for_model=True).order_by('-match_id')\
             .prefetch_related('playerinmatch', 'playerinmatch__hero')
 
 
