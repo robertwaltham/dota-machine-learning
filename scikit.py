@@ -1,7 +1,7 @@
 __author__ = 'Robert Waltham'
 import numpy as np
 import numpy.random as random
-from sklearn import svm, preprocessing, neighbors
+from sklearn import svm, preprocessing, neighbors, linear_model
 from DotaStats.models import Match, ScikitModel, Hero
 import json
 import time
@@ -10,10 +10,10 @@ from contextlib import contextmanager
 
 @contextmanager
 def timeit_context(name):
-    startTime = time.time()
+    start_time = time.time()
     yield
-    elapsedTime = time.time() - startTime
-    print('[{}] finished in {} ms'.format(name, int(elapsedTime * 1000)))
+    elapsed_time = time.time() - start_time
+    print('[{}] finished in {} ms'.format(name, int(elapsed_time * 1000)))
 
 
 class DotaModel():
@@ -22,12 +22,17 @@ class DotaModel():
         pass
 
     @staticmethod
-    def build(n_matches=2000, n_tests=10, min_duration=600):
+    def build(n_matches=2000, n_tests=200, min_duration=600, algorithm='SVC'):
         n_heroes = Hero.objects.all().count()
         valid_matches = []
+        radiant_win = 0
+        dire_win = 0
 
         with timeit_context('Querying Matches'):
-            matches = list(Match.objects.filter(has_been_processed=True, duration__gt=min_duration, valid_for_model=True)[:n_matches].prefetch_related('playerinmatch', 'playerinmatch__hero'))
+            matches = list(Match.objects.filter(has_been_processed=True,
+                                                duration__gt=min_duration,
+                                                valid_for_model=True).order_by('?')[:n_matches]
+                           .prefetch_related('playerinmatch', 'playerinmatch__hero'))
             for match in matches:
                 is_valid = True
                 if match.playerinmatch.all().count() != 10:
@@ -37,6 +42,10 @@ class DotaModel():
                         is_valid = False
                 if is_valid:
                     valid_matches.append(match)
+                    if match.radiant_win:
+                        radiant_win += 1
+                    else:
+                        dire_win += 1
 
         with timeit_context('Shuffling Matches'):
             random.shuffle(valid_matches)
@@ -62,13 +71,18 @@ class DotaModel():
                     testing_match_win.append(win)
 
         with timeit_context('Building Model'):
-            clf = svm.SVC()
+            clf = None
+            if algorithm == 'SVC':
+                clf = svm.SVC()
+            if algorithm == 'SGD':
+                clf = linear_model.SGDClassifier()
             clf.fit(training_match_features, training_match_win)
 
         with timeit_context('Scoring Model'):
             score = clf.score(testing_match_features, testing_match_win) * 100
 
-        return len(valid_matches), score, training_set, testing_set
+        return len(valid_matches), score, training_set, testing_set,\
+            (float(radiant_win) / float(len(valid_matches))) * 100
 
 
     @staticmethod

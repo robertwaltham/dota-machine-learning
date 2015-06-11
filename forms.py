@@ -21,3 +21,4 @@ class ModelTestForm(forms.Form):
         n_matches = forms.IntegerField(label='Match Count', initial=2000)
         n_tests = forms.IntegerField(label='Test Count', initial=200)
         min_duration = forms.IntegerField(label='Min Duration', initial=600)
+        algorithm = forms.ChoiceField(choices=(('SVC', 'SVC'), ('SVC', 'SGD')), )
