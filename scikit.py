@@ -70,7 +70,7 @@ class DotaModel():
                     testing_match_features.append(match_data)
                     testing_match_win.append(win)
 
-        with timeit_context('Building Model'):
+        with timeit_context('Building Model ' + algorithm):
             clf = None
             if algorithm == 'SVC':
                 clf = svm.SVC()
