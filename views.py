@@ -51,6 +51,7 @@ class IndexView(TemplateView):
         context['matches'] = []
         context['processed'] = Match.get_count_unprocessed()
         context['models'] = ScikitModel.objects.filter(is_ready=True).count()
+        context['heroes'] = Hero.get_serialized_hero_list()
         return context
 
 
@@ -152,7 +153,7 @@ class HeroListView(ListView):
     context_object_name = 'heroes'
 
     def get_queryset(self):
-        return Hero.objects.filter(hero_id__gt=0)
+        return Hero.objects.filter(hero_id__gt=0).order_by('primary_attribute')
 
 
 class ItemListView(ListView):

@@ -4,9 +4,12 @@ import urllib2
 import datetime
 import pytz
 import numpy
+from itertools import groupby, imap
 
 from django.db import models, IntegrityError
 from django.templatetags.static import static
+from django.core.exceptions import ObjectDoesNotExist
+from django.core import serializers
 
 from website.settings import DotaAPIKey
 from djcelery.picklefield import PickledObjectField
@@ -15,7 +18,8 @@ api_base = 'https://api.steampowered.com'
 match_history = '/IDOTA2Match_570/GetMatchHistory/V001/'
 match_history_sequence = '/IDOTA2Match_570/GetMatchHistoryBySequenceNum/V001/?key={0}&start_at_match_seq_num={1}'
 details = '/IDOTA2Match_570/GetMatchDetails/V001/?match_id={0}&key={1}'
-heroes = 'https://api.steampowered.com/IEconDOTA2_570/GetHeroes/v001/?key={0}&language={1}'
+heroes_url = 'https://api.steampowered.com/IEconDOTA2_570/GetHeroes/v001/?key={0}&language={1}'
+hero_stats_url = 'http://herostats.io:322/heroes/all'
 items = 'https://api.steampowered.com/IEconDOTA2_570/GetGameItems/v0001/?key={0}&language={1}'
 language = 'en_us'
 
@@ -79,13 +83,15 @@ class Hero(models.Model):
     name = models.CharField(max_length=255)
     localized_name = models.CharField(max_length=255, default='')
     hero_id = models.IntegerField(primary_key=True, default=0)
+    PRIMARY_ATTRIBUTE = ((0, 'STR'), (1, 'AGI'), (2, 'INT'))
+    primary_attribute = models.IntegerField(choices=PRIMARY_ATTRIBUTE, default=0)
 
     @staticmethod
     def load_heroes_from_api():
-        url = heroes.format(DotaAPIKey, language)
+        url = heroes_url.format(DotaAPIKey, language)
         try:
+            # load data from Dota 2 API
             data = json.load(urllib2.urlopen(url))
-            print(json.dumps(data))
             result = 0
             if data['result']['status'] == 200:
                 result = len(data['result']['heroes'])
@@ -94,9 +100,30 @@ class Hero(models.Model):
                     hero.name = new_hero['name']
                     hero.localized_name = new_hero['localized_name']
                     hero.save()
+
+            # load data from secondary API
+            for key, hero_data in json.load(urllib2.urlopen(hero_stats_url)).iteritems():
+                try:
+                    hero = Hero.objects.get(localized_name=hero_data['Name'])
+                    hero.primary_attribute = hero_data['PrimaryStat']
+                    hero.save()
+                except ObjectDoesNotExist as e:
+                    print "ObjectDoesNotExist"
             return result
         except urllib2.HTTPError as e:
             return "HTTP error({0}): {1}".format(e.errno, e.strerror)
+
+    @staticmethod
+    def get_heroes_by_attribute():
+        return [list(g) for k, g in groupby(Hero.objects.all().order_by('primary_attribute'),
+                                            lambda x: x.primary_attribute)]
+
+    @staticmethod
+    def get_serialized_hero_list():
+        return json.dumps(
+            [{'name': hero.name, 'localized_name': hero.localized_name, 'hero_id': hero.hero_id,
+              'primary_attribute': hero.primary_attribute, 'image': hero.get_image()}
+             for hero in Hero.objects.all().filter(hero_id__gt=0)])
 
     def get_winrate(self):
         player_in_match = PlayerInMatch.objects.filter(hero=self)
@@ -140,7 +167,6 @@ class Item(models.Model):
         try:
             data = json.load(urllib2.urlopen(url))
             result = 0
-            print(json.dumps(data))
             if data['result']['status'] == 200:
                 result = len(data['result']['items'])
                 for new_item in data['result']['items']:

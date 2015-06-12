@@ -14,6 +14,9 @@
                     <td>
                         <a href="{% url 'hero-detail' hero.hero_id%}">{{ hero }}</a>
                     </td>
+                    <td>
+                        {{ hero.primary_attribute }}
+                    </td>
                 </tr>
             {% endfor %}
             </table>

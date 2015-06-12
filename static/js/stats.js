@@ -2,20 +2,16 @@ var stats = null;
 
 (function () {
     stats = {
-        matches: {},
-        processed_matches:0,
         urls: {
             getMatch: '',
             processMatch: '',
             staticData: '',
             buildModel:''
         },
-        init: function (urls, matches, processed_matches) {
-            stats.processed_matches = processed_matches;
+        heroes:[],
+        init: function (urls, heroes) {
+            stats.heroes = heroes;
             $.extend(stats.urls, {}, urls);
-            _.each(matches, function(match, index, list){
-                stats.matches[match.pk] = match.fields;
-            });
 
             rivets.binders.count = function (el, value) {
                 $(el).html(_.keys(value).length);
@@ -23,7 +19,14 @@ var stats = null;
 
             rivets.bind($('body'), {
                 stats:stats
-            })
+            });
+
+            var $hero = [$('#str-hero'), $('#agi-hero'), $('#int-hero')];
+            _.map(stats.heroes, function(hero){
+                $hero[hero['primary_attribute']].append('<tr><td><img src="' + hero.image + '"></td></tr>');
+            });
+
+
         },
         events: {
             getMatches: function () {
