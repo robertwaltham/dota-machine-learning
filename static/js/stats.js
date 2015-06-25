@@ -21,11 +21,33 @@ var stats = null;
                 stats:stats
             });
 
-            var $hero = [$('#str-hero'), $('#agi-hero'), $('#int-hero')];
-            _.map(stats.heroes, function(hero){
-                $hero[hero['primary_attribute']].append('<tr><td><img src="' + hero.image + '"></td></tr>');
-            });
+            var $hero = [$('#str-hero'), $('#agi-hero'), $('#int-hero')],
+                hero_element = ['', '', ''],
+                hero_count = [0,0,0],
+                row_count = 3;
 
+            for(var i = 0; i < stats.heroes.length; i++){
+                var hero = stats.heroes[i],
+                    attribute = hero['primary_attribute'];
+
+
+                if(hero_count[attribute] % row_count === 0){
+                    hero_element[attribute] += '<div class="row">';
+                }
+
+                hero_element[attribute] += '<div class="col-md-4"><a href="' + hero.link + '"><img src="' + hero.image
+                    + '"><div>'+ hero.name +'</div></a></div>';
+
+                hero_count[attribute] += 1;
+
+                if(hero_count[attribute] % row_count === 0){
+                    hero_element[attribute] += '</div>';
+                }
+            }
+
+            $hero[0].append(hero_element[0]);
+            $hero[1].append(hero_element[1]);
+            $hero[2].append(hero_element[2]);
 
         },
         events: {

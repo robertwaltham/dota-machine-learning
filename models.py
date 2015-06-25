@@ -10,6 +10,7 @@ from django.db import models, IntegrityError
 from django.templatetags.static import static
 from django.core.exceptions import ObjectDoesNotExist
 from django.core import serializers
+from django.core.urlresolvers import reverse
 
 from website.settings import DotaAPIKey
 from djcelery.picklefield import PickledObjectField
@@ -121,8 +122,11 @@ class Hero(models.Model):
     @staticmethod
     def get_serialized_hero_list():
         return json.dumps(
-            [{'name': hero.localized_name, 'hero_id': hero.hero_id,
-              'primary_attribute': hero.primary_attribute, 'image': hero.get_image()}
+            [{'name': hero.localized_name,
+              'hero_id': hero.hero_id,
+              'primary_attribute': hero.primary_attribute,
+              'image': hero.get_small_image(),
+              'link': reverse('hero-detail', args=(hero.hero_id,))}
              for hero in Hero.objects.all().filter(hero_id__gt=0)])
 
     def get_winrate(self):
@@ -211,8 +215,8 @@ class Match(models.Model):
 
     @staticmethod
     def get_matches_for_hero_id(hero_id):
-        return Match.objects.filter(playerinmatch__hero__pk=hero_id).order_by('-match_id').prefetch_related(
-            'playerinmatch', 'playerinmatch__hero')[:50]
+        return Match.objects.filter(playerinmatch__hero__pk=hero_id).order_by('-match_id')[:50].prefetch_related(
+            'playerinmatch', 'playerinmatch__hero')
 
     @staticmethod
     def get_all():
