@@ -121,7 +121,7 @@ class Hero(models.Model):
     @staticmethod
     def get_serialized_hero_list():
         return json.dumps(
-            [{'name': hero.name, 'localized_name': hero.localized_name, 'hero_id': hero.hero_id,
+            [{'name': hero.localized_name, 'hero_id': hero.hero_id,
               'primary_attribute': hero.primary_attribute, 'image': hero.get_image()}
              for hero in Hero.objects.all().filter(hero_id__gt=0)])
 
@@ -242,6 +242,8 @@ class Match(models.Model):
             url += '&start_at_match_id=' + str(start_at_match_id)
         if matches_requested > 0:
             url += '&matches_requested=' + str(matches_requested)
+
+        print url
         return url
 
     @staticmethod

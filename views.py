@@ -140,10 +140,10 @@ class BuildAndTestView(TemplateView):
         context['form'] = form
         if form.is_valid():
             data = form.cleaned_data
-            context['count'], context['accuracy'], context['training'], context['testing'], context['radiant_win']\
+            context['count'], context['accuracy'], context['radiant_win']\
                 = DotaModel.build(data['n_matches'], data['n_tests'], data['min_duration'], data['algorithm'])
         else:
-            context['count'], context['accuracy'], context['training'], context['testing'], context['radiant_win']\
+            context['count'], context['accuracy'], context['radiant_win']\
                 = DotaModel.build()
         return context
 

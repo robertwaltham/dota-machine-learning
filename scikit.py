@@ -81,7 +81,7 @@ class DotaModel():
         with timeit_context('Scoring Model'):
             score = clf.score(testing_match_features, testing_match_win) * 100
 
-        return len(valid_matches), score, training_set, testing_set,\
+        return len(valid_matches), score,\
             (float(radiant_win) / float(len(valid_matches))) * 100
 
 
