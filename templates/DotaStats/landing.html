@@ -9,9 +9,6 @@
                 Processed: {{ processed }}
             </div>
             <div>
-                Dire: {{ wins.dire }}, Radiant: {{ wins.radiant }}
-            </div>
-            <div>
                 Models: {{ models }}
             </div>
         </div>
@@ -28,6 +25,9 @@
     </div>
 
     {% endif %}
+    <div class="row" id="date-count">
+
+    </div>
 
     <div class="row">
         <div class="col-md-4">
@@ -57,9 +57,10 @@
             getMatch:'{% url 'load-matches' %}',
             processMatch:'{% url 'process-match' %}',
             staticData: '{% url 'static-data' %}',
-            buildModel: '{% url 'build-data' %}'
+            buildModel: '{% url 'build-data' %}',
         },
-        {{ heroes|safe }}
-        )})();
+        {{ heroes|safe }},
+        {{ date_count|safe }}
+    )})();
 </script>
 {% endblock %}

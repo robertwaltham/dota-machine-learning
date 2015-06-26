@@ -52,6 +52,8 @@ class IndexView(TemplateView):
         context['processed'] = Match.get_count_unprocessed()
         context['models'] = ScikitModel.objects.filter(is_ready=True).count()
         context['heroes'] = Hero.get_serialized_hero_list()
+        context['date_count'] = Match.get_count_by_date()
+        print context['date_count']
         return context
 
 

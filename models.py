@@ -11,6 +11,8 @@ from django.templatetags.static import static
 from django.core.exceptions import ObjectDoesNotExist
 from django.core import serializers
 from django.core.urlresolvers import reverse
+from django.db.models import Q, Count
+from django.core.serializers.json import DjangoJSONEncoder
 
 from website.settings import DotaAPIKey
 from djcelery.picklefield import PickledObjectField
@@ -215,7 +217,7 @@ class Match(models.Model):
 
     @staticmethod
     def get_matches_for_hero_id(hero_id):
-        return Match.objects.filter(playerinmatch__hero__pk=hero_id).order_by('-match_id')[:50].prefetch_related(
+        return Match.objects.filter(playerinmatch__hero__pk=hero_id, valid_for_model=True).order_by('-match_id')[:50].prefetch_related(
             'playerinmatch', 'playerinmatch__hero')
 
     @staticmethod
@@ -464,6 +466,14 @@ class Match(models.Model):
     @staticmethod
     def get_count():
         return Match.objects.count()
+
+    @staticmethod
+    def get_count_by_date():
+        return json.dumps(list(Match.objects.filter(valid_for_model=True) \
+            .extra({'start_time': "date(start_time)"}) \
+            .values('start_time') \
+            .annotate(created_count=Count('match_id'))),
+            cls=DjangoJSONEncoder)
 
     def get_details_url(self):
         return api_base + details.format(self.match_id, DotaAPIKey)

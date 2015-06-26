@@ -9,8 +9,10 @@ var stats = null;
             buildModel:''
         },
         heroes:[],
-        init: function (urls, heroes) {
+        date_count:[],
+        init: function (urls, heroes, date_count) {
             stats.heroes = heroes;
+            stats.date_count = date_count;
             $.extend(stats.urls, {}, urls);
 
             rivets.binders.count = function (el, value) {
@@ -48,6 +50,14 @@ var stats = null;
             $hero[0].append(hero_element[0]);
             $hero[1].append(hero_element[1]);
             $hero[2].append(hero_element[2]);
+
+            var $date_sel = $('#date-count'),
+                date_list = '';
+            _.each(stats.date_count, function(date){
+                date_list += '<div class="row"><div class="col-md-6">'+date.start_time+
+                    '</div><div class="col-md-6">'+date.created_count+'</div></div>'
+            });
+            $date_sel.append(date_list);
 
         },
         events: {
