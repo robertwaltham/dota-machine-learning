@@ -47,7 +47,7 @@ class IndexView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super(IndexView, self).get_context_data(**kwargs)
-        context['count'] = Match.get_all().count()
+        context['count'] = Match.get_all().filter(valid_for_model=True).count()
         context['matches'] = []
         context['processed'] = Match.get_count_unprocessed()
         context['models'] = ScikitModel.objects.filter(is_ready=True).count()
@@ -140,13 +140,15 @@ class BuildAndTestView(TemplateView):
         context = super(BuildAndTestView, self).get_context_data(**kwargs)
         form = ModelTestForm(self.request.GET)
         context['form'] = form
+        DotaModel.mapreduce()
+
         if form.is_valid():
-            data = form.cleaned_data
-            context['count'], context['accuracy'], context['radiant_win']\
-                = DotaModel.build(data['n_matches'], data['n_tests'], data['min_duration'], data['algorithm'])
+            # data = form.cleaned_data
+            # context['count'], context['accuracy'], context['radiant_win']\
+            #     = DotaModel.build(data['n_matches'], data['n_tests'], data['min_duration'], data['algorithm'])
+            context['valid'] = True
         else:
-            context['count'], context['accuracy'], context['radiant_win']\
-                = DotaModel.build()
+            context['valid'] = False
         return context
 
 

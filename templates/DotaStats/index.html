@@ -26,7 +26,7 @@
             <a class="navbar-brand" href="{% url 'items' %}">Items</a>
         {% if user.is_authenticated %}
             <a class="navbar-brand" href="{% url 'create_prediction' %}">Predict</a>
-            <a class="navbar-brand" href="{% url 'build-test' %}?n_matches=2000&n_tests=200&min_duration=600&algorithm=SVC">Test</a>
+            <a class="navbar-brand" href="{% url 'build-test' %}">Test</a>
         {% endif %}
         </div>
         <div class="navbar-collapse collapse">

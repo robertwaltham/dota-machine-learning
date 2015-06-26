@@ -11,6 +11,7 @@
                 </form>
             </div>
         </div>
+    {% if valid %}
         <div class="row">
             <div class="col-md-12">
                 Count: {{ count }}
@@ -18,5 +19,6 @@
                 Radiant Win: {{ radiant_win }}%
             </div>
         </div>
+    {% endif %}
     </div>
 {% endblock %}

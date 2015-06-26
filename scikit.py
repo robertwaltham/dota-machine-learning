@@ -5,8 +5,10 @@ from sklearn import svm, preprocessing, neighbors, linear_model
 from DotaStats.models import Match, ScikitModel, Hero
 import json
 import time
-
+import operator
+from itertools import repeat, imap
 from contextlib import contextmanager
+from django.db.models import Q
 
 @contextmanager
 def timeit_context(name):
@@ -20,6 +22,55 @@ class DotaModel():
 
     def __init__(self):
         pass
+
+    @staticmethod
+    def mapreduce(n_tests=1, min_duration=600):
+        n_heroes = Hero.objects.all().count()
+        n_matches = Match.objects.filter(has_been_processed=True,
+                                            duration__gt=min_duration,
+                                            valid_for_model=True).count()
+
+        test_matches = list(Match.objects
+                            .filter(has_been_processed=True,
+                                                duration__gt=min_duration,
+                                                valid_for_model=True)
+                            .order_by('?')[:n_tests]
+                            .prefetch_related('playerinmatch', 'playerinmatch__hero'))
+
+        for match in test_matches:
+            match_data, win = match.get_data_array(n_heroes)
+
+            query = Q(has_been_processed=True) & Q(duration__gt=min_duration) & Q(valid_for_model=True)
+
+            player_query = Q(playerinmatch__hero_id=match.playerinmatch.all()[0].hero_id)
+            for player_in_match in match.playerinmatch.all()[1:]:
+                player_query = player_query | Q(playerinmatch__hero_id=player_in_match.hero_id)
+
+            training_matches = list(Match.objects
+                                    .filter(query, player_query)[:5000]
+                                    .prefetch_related('playerinmatch', 'playerinmatch__hero'))
+
+            training_match_features = []
+            training_match_win = []
+            for training_match in training_matches:
+                training_match_data, win = training_match.get_data_array(n_heroes)
+                training_match_features.append(training_match_data)
+                training_match_win.append(win)
+
+            matches_by_similarity = [0 for i in repeat(None, 11)]
+            wins_by_similarity = [0 for i in repeat(None, 11)]
+
+            for i, test_match in enumerate(training_match_features):
+                score = int(sum(imap(operator.mul, match_data, test_match)))
+                matches_by_similarity[score] += 1
+                if training_match_win[i]:
+                    wins_by_similarity[score] += 1
+
+            print matches_by_similarity
+            print wins_by_similarity
+            # print map(lambda x: str(100 * float(x) / n_matches) + '%', matches_by_similarity)
+            print list(imap(lambda x, y: str(100 * float(x) / float(y)) + '%' if y > 0 else '0%', wins_by_similarity, matches_by_similarity))
+
 
     @staticmethod
     def build(n_matches=2000, n_tests=200, min_duration=600, algorithm='SVC'):

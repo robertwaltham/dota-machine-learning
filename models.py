@@ -11,7 +11,7 @@ from django.templatetags.static import static
 from django.core.exceptions import ObjectDoesNotExist
 from django.core import serializers
 from django.core.urlresolvers import reverse
-from django.db.models import Q, Count
+from django.db.models import Count
 from django.core.serializers.json import DjangoJSONEncoder
 
 from website.settings import DotaAPIKey
@@ -461,7 +461,7 @@ class Match(models.Model):
 
     @staticmethod
     def get_count_unprocessed():
-        return Match.objects.filter(has_been_processed=True).count()
+        return Match.objects.filter(valid_for_model=True, has_been_processed=True).count()
 
     @staticmethod
     def get_count():
