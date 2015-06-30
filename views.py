@@ -124,6 +124,11 @@ class MatchDetailView(DetailView):
     def get_queryset(self):
         return super(MatchDetailView, self).get_queryset().prefetch_related('playerinmatch', 'playerinmatch__hero')
 
+    def get_context_data(self, **kwargs):
+        context = super(MatchDetailView, self).get_context_data()
+        context['related'] = self.object.get_related_matches()
+        return context
+
 
 class BuildDataView(View):
 

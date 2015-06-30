@@ -6,12 +6,13 @@ import pytz
 import numpy
 from itertools import groupby, imap
 
+from bitstring import BitArray
 from django.db import models, IntegrityError
 from django.templatetags.static import static
 from django.core.exceptions import ObjectDoesNotExist
 from django.core import serializers
 from django.core.urlresolvers import reverse
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.core.serializers.json import DjangoJSONEncoder
 
 from website.settings import DotaAPIKey
@@ -546,9 +547,6 @@ class Match(models.Model):
     def get_data_array(self, n_heroes=None):
         if not n_heroes:
             n_heroes = Hero.objects.all().count()
-        # if self.data is not None:
-        #     return self.data, int(self.radiant_win)
-        # else:
         heroes_in_match = self.playerinmatch.all()
 
         if len(heroes_in_match) < 10:
@@ -560,9 +558,60 @@ class Match(models.Model):
             if playerinmatch.player_slot > 127:
                 hero_index += n_heroes
             data[hero_index] = 1
-            # self.data = data
-            # self.save()
         return data, int(self.radiant_win)
+
+    def get_team_bitstring(self, n_heroes=None):
+
+        heroes_in_match = self.playerinmatch.all()
+        radiant = BitArray(length=128)
+        dire = BitArray(length=128)
+
+        for playerinmatch in heroes_in_match:
+            hero_index = playerinmatch.hero_id
+            if playerinmatch.player_slot > 127:
+                dire[hero_index] = '0b1'
+            else:
+                radiant[hero_index] = '0b1'
+
+        return radiant, dire
+
+    def get_related_matches(self, n_matches=10000, n_heroes=None):
+        if not n_heroes:
+            n_heroes = Hero.objects.all().count()
+
+        radiant, dire = self.get_team_bitstring(n_heroes)
+
+        player_in_match_set = self.playerinmatch.all()
+
+        query = Q(has_been_processed=True) & Q(valid_for_model=True)
+        player_query = Q(playerinmatch__hero_id=player_in_match_set[0].hero_id)
+
+        for player_in_match in player_in_match_set[1:]:
+            player_query = player_query | Q(playerinmatch__hero_id=player_in_match.hero_id)
+
+        matches = list(Match.objects
+                    .filter(query, player_query)
+                    .order_by('-match_id')
+                    .distinct()[:n_matches]
+                    .prefetch_related('playerinmatch', 'playerinmatch__hero'))
+
+        result = []
+        for match in matches:
+            if match.match_id == self.match_id:
+                continue
+
+            test_radiant, test_dire = match.get_team_bitstring(n_heroes)
+
+            count = (radiant & test_radiant).count(True) \
+                + (dire & test_dire).count(True)
+            count2 = (radiant & test_dire).count(True) \
+                + (dire & test_radiant).count(True)
+
+            if count > 3 or count2 > 3:
+                result.append({'match': match, 'count': max(count, count2)})
+
+        result.sort(key=lambda x: -1 * x['count'])
+        return result
 
     def get_hero_ids_in_match(self):
         return self.playerinmatch_set.all().values('hero_id')

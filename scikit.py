@@ -41,8 +41,8 @@ class DotaModel():
             match_data, win = match.get_data_array(n_heroes)
 
             query = Q(has_been_processed=True) & Q(duration__gt=min_duration) & Q(valid_for_model=True)
-
             player_query = Q(playerinmatch__hero_id=match.playerinmatch.all()[0].hero_id)
+
             for player_in_match in match.playerinmatch.all()[1:]:
                 player_query = player_query | Q(playerinmatch__hero_id=player_in_match.hero_id)
 
@@ -200,6 +200,5 @@ class DotaModel():
         #     prediction = clf.predict(match_data)[0]
         #     results.append({'prediction': prediction, 'win': win, 'match_id': match.match_id})
         return results
-
 
 
