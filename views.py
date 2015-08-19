@@ -7,10 +7,13 @@ from django.shortcuts import redirect
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User, Group
 from django.core.urlresolvers import reverse
 from django import http
+from rest_framework import viewsets
 
 from models import Match, Item, Hero, ScikitModel, MatchPrediction
+from serializers import UserSerializer, GroupSerializer, HeroSerializer
 from forms import PredictionForm, ModelTestForm
 from scikit import DotaModel
 
@@ -55,6 +58,10 @@ class IndexView(TemplateView):
         context['date_count'] = Match.get_count_by_date()
         print context['date_count']
         return context
+
+
+class ReactView(TemplateView):
+    template_name = 'DotaStats/react.html'
 
 
 class AjaxLoadMatchesFromAPI(LoginRequiredMixin, JSONView):
@@ -229,3 +236,18 @@ class LogOutView(View):
     def get(self, request):
         logout(request)
         return redirect(reverse('index'))
+
+
+class UserViewSet(viewsets.ModelViewSet):
+    queryset = User.objects.all().order_by('-date_joined')
+    serializer_class = UserSerializer
+
+
+class GroupViewSet(viewsets.ModelViewSet):
+    queryset = Group.objects.all()
+    serializer_class = GroupSerializer
+
+
+class HeroViewSet(viewsets.ModelViewSet):
+    queryset = Hero.objects.all()
+    serializer_class = HeroSerializer

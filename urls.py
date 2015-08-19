@@ -1,7 +1,12 @@
 __author__ = 'Robert Waltham'
-from django.conf.urls import patterns, url
-
+from django.conf.urls import patterns, url, include
+from rest_framework import routers
 from DotaStats import views
+
+router = routers.DefaultRouter()
+router.register(r'users', views.UserViewSet)
+router.register(r'groups', views.GroupViewSet)
+router.register(r'heroes', views.HeroViewSet)
 
 urlpatterns = patterns('',
     url(r'^$', views.IndexView.as_view() , name='index'),
@@ -21,4 +26,7 @@ urlpatterns = patterns('',
     url(r'^predict/', views.CreatePredictionView.as_view(), name='create_prediction'),
     url(r'^login/', views.LogInView.as_view(), name='login'),
     url(r'^logout/', views.LogOutView.as_view(), name='logout'),
+    url(r'^react/', views.ReactView.as_view(), name='react'),
+    url(r'^api/', include(router.urls)),
+    url(r'^api-auth/', include('rest_framework.urls', namespace='rest_framework'))
 )

@@ -10,7 +10,6 @@ from bitstring import BitArray
 from django.db import models, IntegrityError
 from django.templatetags.static import static
 from django.core.exceptions import ObjectDoesNotExist
-from django.core import serializers
 from django.core.urlresolvers import reverse
 from django.db.models import Count, Q
 from django.core.serializers.json import DjangoJSONEncoder
@@ -470,9 +469,9 @@ class Match(models.Model):
 
     @staticmethod
     def get_count_by_date():
-        return json.dumps(list(Match.objects.filter(valid_for_model=True) \
-            .extra({'start_time': "date(start_time)"}) \
-            .values('start_time') \
+        return json.dumps(list(Match.objects.filter(valid_for_model=True)
+            .extra({'start_time': "date(start_time)"})
+            .values('start_time')
             .annotate(created_count=Count('match_id'))),
             cls=DjangoJSONEncoder)
 
