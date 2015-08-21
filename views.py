@@ -249,5 +249,5 @@ class GroupViewSet(viewsets.ModelViewSet):
 
 
 class HeroViewSet(viewsets.ModelViewSet):
-    queryset = Hero.objects.all()
+    queryset = Hero.objects.all().filter(hero_id__gt=0)
     serializer_class = HeroSerializer
