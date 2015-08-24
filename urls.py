@@ -27,6 +27,6 @@ urlpatterns = patterns('',
     url(r'^login/', views.LogInView.as_view(), name='login'),
     url(r'^logout/', views.LogOutView.as_view(), name='logout'),
     url(r'^react/', views.ReactView.as_view(), name='react'),
-    url(r'^api/', include(router.urls)),
+    url(r'^api/', include(router.urls), name='api'),
     url(r'^api-auth/', include('rest_framework.urls', namespace='rest_framework'))
 )
