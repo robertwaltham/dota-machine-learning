@@ -61,7 +61,7 @@ class IndexView(TemplateView):
 
 
 class ReactView(TemplateView):
-    template_name = 'DotaStats/react.html'
+    template_name = 'DotaStats/dota-react.html'
 
 
 class AjaxLoadMatchesFromAPI(LoginRequiredMixin, JSONView):
