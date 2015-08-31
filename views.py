@@ -250,7 +250,7 @@ class HeroViewSet(viewsets.ModelViewSet):
 
 
 class MatchViewSet(viewsets.ModelViewSet):
-    queryset = Match.objects.all().order_by('-match_id')
+    queryset = Match.objects.all().filter(valid_for_model=True).order_by('-match_id')
     serializer_class = MatchSerializer
     pagination_class = StandardResultsSetPagination
 
