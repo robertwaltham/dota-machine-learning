@@ -10,10 +10,10 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User, Group
 from django.core.urlresolvers import reverse
 from django import http
-from rest_framework import viewsets
+from rest_framework import viewsets, pagination
 
 from models import Match, Item, Hero, ScikitModel, MatchPrediction
-from serializers import UserSerializer, GroupSerializer, HeroSerializer
+from serializers import UserSerializer, GroupSerializer, HeroSerializer, MatchSerializer, ItemSerializer
 from forms import PredictionForm, ModelTestForm
 from scikit import DotaModel
 
@@ -46,22 +46,12 @@ class JSONView(JSONResponseMixin, TemplateView):
 
 
 class IndexView(TemplateView):
-    template_name = 'DotaStats/landing.html'
+    template_name = 'DotaStats/index.html'
 
     def get_context_data(self, **kwargs):
         context = super(IndexView, self).get_context_data(**kwargs)
-        context['count'] = Match.get_all().filter(valid_for_model=True).count()
-        context['matches'] = []
-        context['processed'] = Match.get_count_unprocessed()
-        context['models'] = ScikitModel.objects.filter(is_ready=True).count()
-        context['heroes'] = Hero.get_serialized_hero_list()
-        context['date_count'] = Match.get_count_by_date()
-        print context['date_count']
+
         return context
-
-
-class ReactView(TemplateView):
-    template_name = 'DotaStats/dota-react.html'
 
 
 class AjaxLoadMatchesFromAPI(LoginRequiredMixin, JSONView):
@@ -238,6 +228,12 @@ class LogOutView(View):
         return redirect(reverse('index'))
 
 
+class StandardResultsSetPagination(pagination.PageNumberPagination):
+    page_size = 25
+    page_size_query_param = 'page_size'
+    max_page_size = 25
+
+
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all().order_by('-date_joined')
     serializer_class = UserSerializer
@@ -251,3 +247,14 @@ class GroupViewSet(viewsets.ModelViewSet):
 class HeroViewSet(viewsets.ModelViewSet):
     queryset = Hero.objects.all().filter(hero_id__gt=0)
     serializer_class = HeroSerializer
+
+
+class MatchViewSet(viewsets.ModelViewSet):
+    queryset = Match.objects.all().order_by('-match_id')
+    serializer_class = MatchSerializer
+    pagination_class = StandardResultsSetPagination
+
+
+class ItemViewSet(viewsets.ModelViewSet):
+    queryset = Item.objects.all().filter(item_id__gt=0)
+    serializer_class = ItemSerializer
