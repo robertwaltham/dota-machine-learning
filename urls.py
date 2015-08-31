@@ -4,9 +4,7 @@ from rest_framework import routers
 from DotaStats import views
 
 router = routers.DefaultRouter()
-router.register(r'users', views.UserViewSet)
 router.register(r'matches', views.MatchViewSet)
-router.register(r'groups', views.GroupViewSet)
 router.register(r'heroes', views.HeroViewSet)
 router.register(r'items', views.ItemViewSet)
 
