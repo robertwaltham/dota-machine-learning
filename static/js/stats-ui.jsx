@@ -1,36 +1,32 @@
+var Router = ReactRouter; // or var Router = ReactRouter; in browsers
+
+var DefaultRoute = Router.DefaultRoute;
+var Link = Router.Link;
+var Route = Router.Route;
+var RouteHandler = Router.RouteHandler;
+
+function render(urls) {
+    var routes = (
+        <Route name="DotaStats" path="/" handler={DotaStats}>
+            <Route name="Heroes" handler={HeroBox}/>
+            <Route name="Matches" handler={MatchBox}/>
+            <Route name="Items" handler={ItemBox}/>
+            <DefaultRoute handler={HeroBox}/>
+        </Route>
+    );
+    Router.run(routes, function (Handler) {
+        React.render(<Handler/>, document.body);
+    });
+}
+
+
 var DotaStats = React.createClass({
-    showHeroes: function (state) {
-        if (state !== 'Heroes') {
-            React.render(
-                <DotaStats urls={this.props.urls}><HeroBox url={this.props.urls[0]}/></DotaStats>,
-                document.body
-            );
-        }
-    },
-    showMatches: function (state) {
-        if (state !== 'Matches') {
-            React.render(
-                <DotaStats urls={this.props.urls}><MatchBox url={this.props.urls[1]}/></DotaStats>,
-                document.body
-            );
-        }
-    },
-    showItems: function (state) {
-        if (state !== 'Items') {
-            React.render(
-                <DotaStats urls={this.props.urls}><ItemBox url={this.props.urls[2]}/></DotaStats>,
-                document.body
-            );
-        }
-    },
-    showHero: function(state, hero){
-        console.log(hero);
-    },
     render: function () {
         return (<div>
-            <NavBar elements={['Heroes', 'Matches', 'Items']}
-                    transitions={[this.showHeroes, this.showMatches, this.showItems]}/>
-            <ContentBody ref="body">{this.props.children}</ContentBody>
+            <NavBar elements={['Heroes', 'Matches', 'Items']} urls={}/>
+            <ContentBody ref="body">
+                <RouteHandler/>
+            </ContentBody>
         </div>);
     }
 });
@@ -52,11 +48,11 @@ var ItemBox = React.createClass({
             }.bind(this)
         });
     },
-    render:function(){
+    render: function () {
         return (
             <div className="item-box">
                 <h1>Items</h1>
-                <ItemList data={this.state.data} />
+                <ItemList data={this.state.data}/>
             </div>
         )
     }
@@ -129,7 +125,7 @@ var MatchList = React.createClass({
 var Match = React.createClass({
     render: function () {
         var match = this.props.match;
-        var playerNodes= match.playerinmatch.map(function(player){
+        var playerNodes = match.playerinmatch.map(function (player) {
             var hero = player.hero;
             return (
                 <a href={hero.url}>
@@ -220,7 +216,7 @@ var ContentBody = React.createClass({
 var NavBar = React.createClass({
     elementClick: function (i) {
         this.setState({active: this.props.elements[i]});
-        this.props.transitions[i](this.state.active);
+        //this.props.transitions[i](this.state.active);
     },
     getInitialState: function () {
         return {active: this.props.elements[0]}
@@ -228,8 +224,7 @@ var NavBar = React.createClass({
     renderChildren: function () {
         return this.props.elements.map(function (element, i) {
             return (
-                <NavElement key={i} active={this.state.active} name={element}
-                            click={this.elementClick.bind(this, i)}/>
+                <li><Link to={element}>{element}</Link></li>
             );
         }, this);
     },

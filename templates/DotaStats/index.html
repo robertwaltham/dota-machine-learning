@@ -12,23 +12,18 @@
     <script src="{% static "bower/underscore/underscore-min.js" %}"></script>
     <script src="{% static "bower/react/react-with-addons.min.js" %}"></script>
     <script src="{% static "bower/react/JSXTransformer.js" %}"></script>
-
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-router/0.13.3/ReactRouter.min.js"></script>
     <script type="text/jsx" src="{% static "js/stats-ui.jsx" %}"></script>
     <link href="{% static "css/style.css" %}" rel="stylesheet">
-
 
 </head>
 <body>
 
 <script type="text/jsx">
-    React.render(
-            <DotaStats urls={['{% url 'hero-list' %}', '{% url 'match-list' %}', '{% url 'item-list' %}']}>
-                <HeroBox url="{% url 'hero-list' %}"/>
-            </DotaStats>,
-            document.body
-    );
+    $(document).ready(function(){
+        render(['{% url 'hero-list' %}', '{% url 'match-list' %}', '{% url 'item-list' %}']);
+    });
 </script>
-
 
 
 {% if GA_KEY %}

@@ -15,9 +15,11 @@
     "static/bower"
   ],
   "dependencies": {
+    "bootstrap": "~3.3.5",
     "jquery": "~2.1.4",
     "react": "~0.13.3",
     "react-router": "~0.13.3",
+    "require": "*",
     "underscore": "~1.8.3"
   }
 }
