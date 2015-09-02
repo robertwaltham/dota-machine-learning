@@ -254,7 +254,7 @@ class MatchViewSet(viewsets.ModelViewSet):
         .prefetch_related('playerinmatch',
                           'playerinmatch__hero',
                           'playerinmatch__item_0',
-                          'playerinmatch__item_1', 
+                          'playerinmatch__item_1',
                           'playerinmatch__item_2',
                           'playerinmatch__item_3',
                           'playerinmatch__item_4',

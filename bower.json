@@ -1,0 +1,23 @@
+{
+  "name": "static",
+  "version": "0.0.0",
+  "homepage": "https://github.com/robertwaltham/dota-machine-learning",
+  "authors": [
+    "Robert Waltham <rob@blockoftext.com>"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests",
+    "static/bower"
+  ],
+  "dependencies": {
+    "jquery": "~2.1.4",
+    "react": "~0.13.3",
+    "react-router": "~0.13.3",
+    "underscore": "~1.8.3"
+  }
+}

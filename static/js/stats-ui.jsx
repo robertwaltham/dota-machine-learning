@@ -23,6 +23,9 @@ var DotaStats = React.createClass({
             );
         }
     },
+    showHero: function(state, hero){
+        console.log(hero);
+    },
     render: function () {
         return (<div>
             <NavBar elements={['Heroes', 'Matches', 'Items']}
@@ -207,6 +210,7 @@ var Hero = React.createClass({
         )
     }
 });
+
 var ContentBody = React.createClass({
     render: function () {
         return (<div className="container">{this.props.children}</div>);
