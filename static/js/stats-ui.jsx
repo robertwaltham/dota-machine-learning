@@ -1,11 +1,14 @@
-var Router = ReactRouter; // or var Router = ReactRouter; in browsers
-
+var Router = ReactRouter;
 var DefaultRoute = Router.DefaultRoute;
 var Link = Router.Link;
 var Route = Router.Route;
 var RouteHandler = Router.RouteHandler;
 
+//TODO: refactor handling of URLs passed in from the django template
+var apiURLs = [];
+
 function render(urls) {
+    apiURLs = urls;
     var routes = (
         <Route name="DotaStats" path="/" handler={DotaStats}>
             <Route name="Heroes" handler={HeroBox}/>
@@ -23,7 +26,7 @@ function render(urls) {
 var DotaStats = React.createClass({
     render: function () {
         return (<div>
-            <NavBar elements={['Heroes', 'Matches', 'Items']} urls={}/>
+            <NavBar elements={['Heroes', 'Matches', 'Items']}/>
             <ContentBody ref="body">
                 <RouteHandler/>
             </ContentBody>
@@ -37,7 +40,7 @@ var ItemBox = React.createClass({
     },
     componentDidMount: function () {
         $.ajax({
-            url: this.props.url,
+            url: apiURLs[2],
             dataType: 'json',
             cache: false,
             success: function (data) {
@@ -85,7 +88,7 @@ var MatchBox = React.createClass({
     },
     componentDidMount: function () {
         $.ajax({
-            url: this.props.url,
+            url: apiURLs[1],
             dataType: 'json',
             cache: false,
             success: function (data) {
@@ -171,7 +174,7 @@ var HeroBox = React.createClass({
     },
     componentDidMount: function () {
         $.ajax({
-            url: this.props.url,
+            url: apiURLs[0],
             dataType: 'json',
             cache: false,
             success: function (data) {

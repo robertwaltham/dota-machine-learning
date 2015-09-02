@@ -264,5 +264,5 @@ class MatchViewSet(viewsets.ModelViewSet):
 
 
 class ItemViewSet(viewsets.ModelViewSet):
-    queryset = Item.objects.all().filter(item_id__gt=0)
+    queryset = Item.objects.all().filter(item_id__gt=0, recipe=False)
     serializer_class = ItemSerializer
