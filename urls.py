@@ -10,10 +10,12 @@ router.register(r'items', views.ItemViewSet)
 
 urlpatterns = patterns('',
                        url(r'^$', views.IndexView.as_view(), name='index'),
+                       url(r'^admin/$', views.AdminView.as_view(), name='admin'),
                        url(r'^load-matches/$', views.AjaxLoadMatchesFromAPI.as_view(), name='load-matches'),
                        url(r'^process-match/$', views.AjaxLoadDetailsForAll.as_view(), name='process-match'),
                        url(r'^load-static-data/$', views.AjaxLoadStaticDataView.as_view(), name='static-data'),
                        url(r'^update-match/(?P<pk>\d+)/', views.AjaxUpdateMatchDetails.as_view(), name='update-match'),
+                       url(r'^build/', views.BuildDataView.as_view(), name='build-data'),
                        url(r'^login/', views.LogInView.as_view(), name='login'),
                        url(r'^logout/', views.LogOutView.as_view(), name='logout'),
                        url(r'^api/', include(router.urls), name='api'),

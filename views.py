@@ -54,6 +54,21 @@ class IndexView(TemplateView):
         return context
 
 
+class AdminView(TemplateView):
+    template_name = 'DotaStats/admin.html'
+
+    def get_context_data(self, **kwargs):
+        context = super(AdminView, self).get_context_data(**kwargs)
+        context['count'] = Match.get_all().filter(valid_for_model=True).count()
+        context['matches'] = []
+        context['processed'] = Match.get_count_unprocessed()
+        context['models'] = ScikitModel.objects.filter(is_ready=True).count()
+        context['heroes'] = Hero.get_serialized_hero_list()
+        context['date_count'] = Match.get_count_by_date()
+        print context['date_count']
+        return context
+
+
 class AjaxLoadMatchesFromAPI(LoginRequiredMixin, JSONView):
 
     def get_context_data(self, **kwargs):
