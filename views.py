@@ -13,7 +13,8 @@ from django import http
 from rest_framework import viewsets, pagination
 
 from models import Match, Item, Hero, ScikitModel, MatchPrediction
-from serializers import UserSerializer, GroupSerializer, HeroSerializer, MatchSerializer, ItemSerializer
+from serializers import UserSerializer, GroupSerializer, HeroSerializer, \
+    MatchSerializer, ItemSerializer, HeroWithMatchesSerializer
 from forms import PredictionForm, ModelTestForm
 from scikit import DotaModel
 
@@ -262,6 +263,11 @@ class GroupViewSet(viewsets.ModelViewSet):
 class HeroViewSet(viewsets.ModelViewSet):
     queryset = Hero.objects.all().filter(hero_id__gt=0)
     serializer_class = HeroSerializer
+
+
+class HeroWithMatchesSet(viewsets.ModelViewSet):
+    queryset = Hero.objects.all().filter(hero_id__gt=0)
+    serializer_class = HeroWithMatchesSerializer
 
 
 class MatchViewSet(viewsets.ModelViewSet):

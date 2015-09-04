@@ -57,7 +57,7 @@ class PlayerInMatchSerializer(serializers.ModelSerializer):
         fields = ('player_slot', 'hero', 'item_0', 'item_1', 'item_2', 'item_3', 'item_4', 'item_5',)
 
 
-class MatchSerializer(serializers.HyperlinkedModelSerializer):
+class MatchSerializer(serializers.ModelSerializer):
     playerinmatch = PlayerInMatchSerializer(many=True, read_only=True)
 
     class Meta:
@@ -65,3 +65,23 @@ class MatchSerializer(serializers.HyperlinkedModelSerializer):
         fields = ('match_id', 'url', 'radiant_win', 'playerinmatch')
 
 
+class HeroWithMatchesSerializer(serializers.ModelSerializer):
+    hero_image = serializers.SerializerMethodField()
+    small_hero_image = serializers.SerializerMethodField()
+    matches = serializers.SerializerMethodField()
+
+    def get_hero_image(self, hero):
+        return hero.get_image()
+
+    def get_small_hero_image(self, hero):
+        return hero.get_small_image()
+
+    def get_matches(self, hero):
+        matches = Match.get_matches_for_hero_id(hero.hero_id)
+        serializer = MatchSerializer(instance=matches, many=True, context=self.context)
+        return serializer.data
+
+    class Meta:
+        model = Hero
+        fields = ('name', 'localized_name', 'hero_id', 'url', 'primary_attribute', 'hero_image', 'small_hero_image',
+                  'matches')

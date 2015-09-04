@@ -217,8 +217,16 @@ class Match(models.Model):
 
     @staticmethod
     def get_matches_for_hero_id(hero_id):
-        return Match.objects.filter(playerinmatch__hero__pk=hero_id, valid_for_model=True).order_by('-match_id')[:50].prefetch_related(
-            'playerinmatch', 'playerinmatch__hero')
+        return Match.objects.filter(playerinmatch__hero__pk=hero_id, valid_for_model=True).order_by('-match_id')[:10] \
+            .prefetch_related('playerinmatch',
+                              'playerinmatch__hero',
+                              'playerinmatch__hero',
+                              'playerinmatch__item_0',
+                              'playerinmatch__item_1',
+                              'playerinmatch__item_2',
+                              'playerinmatch__item_3',
+                              'playerinmatch__item_4',
+                              'playerinmatch__item_5')
 
     @staticmethod
     def get_all():
@@ -233,7 +241,7 @@ class Match(models.Model):
                           start_at_match_id=0, matches_requested=100):
 
         url = api_base + match_history + '?key=' + DotaAPIKey
-        #api is bugged and doesn't honor game mode flag
+        # api is bugged and doesn't honor game mode flag
         if game_mode > 0:
             url += '&game_mode=' + str(game_mode)
         if skill > 0:
@@ -317,7 +325,7 @@ class Match(models.Model):
     @staticmethod
     def get_new_matches_by_sequence_from_api(match_seq_num=None):
         from DotaStats.tasks import process_match
-        #get sequence number of latest match
+        # get sequence number of latest match
         if not match_seq_num:
             latest_match_url = Match.get_match_api_url(matches_requested=1)
             try:
@@ -334,7 +342,7 @@ class Match(models.Model):
         match_data = None
         n_matches_created = 0
         requests = 0
-        #get matches until there are no new matches
+        # get matches until there are no new matches
         while api_has_more_matches:
             match_seq_url = api_base + match_history_sequence.format(DotaAPIKey, match_seq_num)
             try:
@@ -355,7 +363,7 @@ class Match(models.Model):
             else:
                 return "API Error {0}".format(match_data['result']['status'])
 
-            #sanity
+            # sanity
             requests += 1
             if requests >= 5:
                 break
@@ -391,7 +399,7 @@ class Match(models.Model):
             if 'account_id' in player_in_game:
                 accountid = int(player_in_game['account_id'])
             else:
-                #id for anon players
+                # id for anon players
                 accountid = 4294967295
 
             if 'leaver_status' in player_in_game:
@@ -458,7 +466,6 @@ class Match(models.Model):
             counter += 1
         return unprocessed
 
-
     @staticmethod
     def get_count_unprocessed():
         return Match.objects.filter(valid_for_model=True, has_been_processed=True).count()
@@ -470,10 +477,10 @@ class Match(models.Model):
     @staticmethod
     def get_count_by_date():
         return json.dumps(list(Match.objects.filter(valid_for_model=True)
-            .extra({'start_time': "date(start_time)"})
-            .values('start_time')
-            .annotate(created_count=Count('match_id'))),
-            cls=DjangoJSONEncoder)
+                               .extra({'start_time': "date(start_time)"})
+                               .values('start_time')
+                               .annotate(created_count=Count('match_id'))),
+                          cls=DjangoJSONEncoder)
 
     def get_details_url(self):
         return api_base + details.format(self.match_id, DotaAPIKey)
@@ -589,10 +596,10 @@ class Match(models.Model):
             player_query = player_query | Q(playerinmatch__hero_id=player_in_match.hero_id)
 
         matches = list(Match.objects
-                    .filter(query, player_query)
-                    .order_by('-match_id')
-                    .distinct()[:n_matches]
-                    .prefetch_related('playerinmatch', 'playerinmatch__hero'))
+                       .filter(query, player_query)
+                       .order_by('-match_id')
+                       .distinct()[:n_matches]
+                       .prefetch_related('playerinmatch', 'playerinmatch__hero'))
 
         result = []
         for match in matches:
@@ -602,9 +609,9 @@ class Match(models.Model):
             test_radiant, test_dire = match.get_team_bitstring(n_heroes)
 
             count = (radiant & test_radiant).count(True) \
-                + (dire & test_dire).count(True)
+                    + (dire & test_dire).count(True)
             count2 = (radiant & test_dire).count(True) \
-                + (dire & test_radiant).count(True)
+                     + (dire & test_radiant).count(True)
 
             if count > 3 or count2 > 3:
                 result.append({'match': match, 'count': max(count, count2)})
@@ -714,7 +721,7 @@ class MatchPrediction(models.Model):
     dire_player_3 = models.ForeignKey(Hero, related_name="dire_player_3", null=True)
     dire_player_4 = models.ForeignKey(Hero, related_name="dire_player_4", null=True)
     dire_player_5 = models.ForeignKey(Hero, related_name="dire_player_5", null=True)
-    
+
     def get_data_array(self):
         n_heroes = Hero.objects.all().count()
         data = numpy.zeros((n_heroes * 2) + 2)
@@ -723,7 +730,7 @@ class MatchPrediction(models.Model):
         data[self.radiant_player_2.hero_id] = 1
         data[self.radiant_player_3.hero_id] = 1
         data[self.radiant_player_4.hero_id] = 1
-        
+
         data[self.dire_player_0.hero_id + n_heroes] = 1
         data[self.dire_player_1.hero_id + n_heroes] = 1
         data[self.dire_player_2.hero_id + n_heroes] = 1
@@ -749,5 +756,6 @@ class MatchPrediction(models.Model):
         self.save()
         return prediction
 
-#important: has to be last for circular import crap
+
+# important: has to be last for circular import crap
 from .scikit import DotaModel

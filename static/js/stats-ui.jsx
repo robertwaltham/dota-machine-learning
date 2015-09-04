@@ -14,6 +14,7 @@ function render(urls) {
             <Route name="Heroes" handler={HeroBox}/>
             <Route name="Matches" handler={MatchBox}/>
             <Route name="Items" handler={ItemBox}/>
+            <Route name="Hero/:id" handler={HeroDetailBox}/>
             <DefaultRoute handler={HeroBox}/>
         </Route>
     );
@@ -34,6 +35,15 @@ var DotaStats = React.createClass({
     }
 });
 
+var ContentBody = React.createClass({
+    render: function () {
+        return (<div className="container">{this.props.children}</div>);
+    }
+});
+
+/**
+ *
+ */
 var ItemBox = React.createClass({
     getInitialState: function () {
         return {data: []};
@@ -82,6 +92,9 @@ var ItemList = React.createClass({
     }
 });
 
+/**
+ *
+ */
 var MatchBox = React.createClass({
     getInitialState: function () {
         return {data: []};
@@ -131,9 +144,7 @@ var Match = React.createClass({
         var playerNodes = match.playerinmatch.map(function (player) {
             var hero = player.hero;
             return (
-                <a href={hero.url}>
-                    <img src={hero.small_hero_image}/>
-                </a>
+                <MatchHeroImage hero={hero}/>
             )
         });
         return (
@@ -153,6 +164,9 @@ var Match = React.createClass({
     }
 });
 
+/**
+ *
+ */
 var HeroList = React.createClass({
     render: function () {
         var heroNodes = this.props.data.map(function (hero) {
@@ -200,22 +214,20 @@ var Hero = React.createClass({
         var hero = this.props.hero;
         return (
             <div className="col-md-3 col-sm-4">
-                <a href={hero.url}>
+                <Link to="Hero/:id" params={{id: hero.hero_id, url:hero.url}}>
                     <img src={hero.hero_image}/>
 
                     <div>{hero.localized_name}</div>
-                </a>
+                </Link>
             </div>
         )
     }
 });
 
-var ContentBody = React.createClass({
-    render: function () {
-        return (<div className="container">{this.props.children}</div>);
-    }
-});
 
+/**
+ *
+ */
 var NavBar = React.createClass({
     elementClick: function (i) {
         this.setState({active: this.props.elements[i]});
@@ -256,13 +268,99 @@ var NavBar = React.createClass({
     }
 });
 
-var NavElement = React.createClass({
+/**
+ *
+ */
+var HeroDetailBox = React.createClass({
+    getInitialState: function () {
+        return {data: null};
+    },
+    componentDidMount: function () {
+        this.loadHeroDetails(this.props.params.id);
+    },
+    componentWillReceiveProps: function(props){
+        this.loadHeroDetails(props.params.id);
+    },
+    loadHeroDetails:function(id){
+        $.ajax({
+            url: apiURLs[3] + id,
+            dataType: 'json',
+            cache: false,
+            success: function (data) {
+                this.setState({data: data});
+            }.bind(this),
+            error: function (xhr, status, err) {
+                console.error(this.props.url, status, err.toString());
+            }.bind(this)
+        });
+    },
     render: function () {
-        var active = this.props.active === this.props.name ? 'active' : '';
+        if (this.state.data == null) {
+            return (
+                <div></div>
+            )
+        } else {
+            return (
+                <HeroDetail hero={this.state.data}/>
+            )
+        }
+
+    }
+});
+
+var HeroDetail = React.createClass({
+    render: function () {
+        var hero = this.props.hero;
+
+        var matchNodes = hero.matches.map(function (match) {
+            var matches = match.playerinmatch.map(function (playerinmatch) {
+                var hero = playerinmatch.hero;
+                return (
+                    <MatchHeroImage hero={hero}/>
+                )
+            });
+
+            return (
+
+                <div className="row">
+                    <div className="col-md-2">
+                        {match.match_id}
+                    </div>
+                    <div className="col-md-10">
+                        {matches}
+                    </div>
+                </div>
+            )
+        });
+
+
         return (
-            <li onClick={this.props.click} className={active}>
-                <a className="navbar-brand" href="#">{this.props.name}</a>
-            </li>
-        );
+            <div className="col-md-12">
+                <div className="row">
+                    <div className="col-md-2">
+                        <img src={hero.hero_image}/>
+                    </div>
+                    <div className="col-md-10">
+                        <h2>{hero.localized_name}</h2>
+                    </div>
+                </div>
+                <div className="row">
+                    <h3>Recent Matches</h3>
+                </div>
+                {matchNodes}
+            </div>
+        )
+    }
+});
+
+
+var MatchHeroImage = React.createClass({
+    render: function () {
+        var hero = this.props.hero;
+        return (
+            <Link to="Hero/:id" params={{id: hero.hero_id, url:hero.url}}>
+                <img src={hero.small_hero_image}/>
+            </Link>
+        )
     }
 });
