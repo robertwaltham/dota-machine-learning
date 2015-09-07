@@ -21,9 +21,13 @@
 <body>
 
 <script type="text/jsx">
-    $(document).ready(function(){
-        render(['{% url 'hero-list' %}', '{% url 'match-list' %}',
-            '{% url 'item-list' %}', '{% url 'herowithmatches-list' %}']);
+    $(document).ready(function () {
+        render({
+            heroList: '{% url 'hero-list' %}',
+            matchList: '{% url 'match-list' %}',
+            itemList: '{% url 'item-list' %}',
+            heroMatches: '{% url 'herorecentmatches-list' %}'
+        });
     });
 </script>
 

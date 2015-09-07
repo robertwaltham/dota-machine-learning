@@ -4,8 +4,12 @@ var Link = Router.Link;
 var Route = Router.Route;
 var RouteHandler = Router.RouteHandler;
 
-//TODO: refactor handling of URLs passed in from the django template
-var apiURLs = [];
+var apiURLs = {
+    heroList: '',
+    matchList: '',
+    itemList: '',
+    heroMatches: ''
+};
 
 
 // TODO: refactor message handling
@@ -38,6 +42,7 @@ var spinnerOptions = {
 };
 
 function render(urls) {
+    // pass in URLS from django template
     apiURLs = urls;
     var routes = (
         <Route name="DotaStats" path="/" handler={DotaStats}>
@@ -82,7 +87,7 @@ var ItemBox = React.createClass({
     componentDidMount: function () {
         startLoading();
         $.ajax({
-            url: apiURLs[2],
+            url: apiURLs.itemList,
             dataType: 'json',
             cache: false,
             success: function (data) {
@@ -136,7 +141,7 @@ var MatchBox = React.createClass({
     componentDidMount: function () {
         startLoading();
         $.ajax({
-            url: apiURLs[1],
+            url: apiURLs.matchList,
             dataType: 'json',
             cache: false,
             success: function (data) {
@@ -226,7 +231,7 @@ var HeroBox = React.createClass({
     componentDidMount: function () {
         startLoading();
         $.ajax({
-            url: apiURLs[0],
+            url: apiURLs.heroList,
             dataType: 'json',
             cache: false,
             success: function (data) {
@@ -313,7 +318,7 @@ var NavBar = React.createClass({
  */
 var HeroDetailBox = React.createClass({
     getInitialState: function () {
-        return {data: null, loading: true};
+        return {hero: null, matches: []};
     },
     componentDidMount: function () {
         this.loadHeroDetails(this.props.params.id);
@@ -323,12 +328,13 @@ var HeroDetailBox = React.createClass({
     },
     loadHeroDetails: function (id) {
         startLoading();
+        // load hero
         $.ajax({
-            url: apiURLs[3] + id,
+            url: apiURLs.heroList + id,
             dataType: 'json',
             cache: false,
             success: function (data) {
-                this.setState({data: data, loading: false});
+                this.setState({hero: data, matches: this.state.matches});
                 finishLoading();
             }.bind(this),
             error: function (xhr, status, err) {
@@ -336,15 +342,28 @@ var HeroDetailBox = React.createClass({
                 finishLoading();
             }.bind(this)
         });
+
+        // load related matches
+        $.ajax({
+            url: apiURLs.heroMatches + id,
+            dataType: 'json',
+            cache: false,
+            success: function (data) {
+                this.setState({hero: this.state.hero, matches: data.matches});
+            }.bind(this),
+            error: function (xhr, status, err) {
+                console.error(this.props.url, status, err.toString());
+            }.bind(this)
+        });
     },
     render: function () {
-        if (this.state.data == null || this.state.loading) {
+        if (this.state.hero == null) {
             return (
                 <div></div>
             )
         } else {
             return (
-                <HeroDetail hero={this.state.data}/>
+                <HeroDetail hero={this.state.hero} matches={this.state.matches}/>
             )
         }
 
@@ -354,8 +373,8 @@ var HeroDetailBox = React.createClass({
 var HeroDetail = React.createClass({
     render: function () {
         var hero = this.props.hero;
-
-        var matchNodes = hero.matches.map(function (match) {
+        var matches = this.props.matches;
+        var matchNodes = matches.map(function (match) {
             var matches = match.playerinmatch.map(function (playerinmatch) {
                 var hero = playerinmatch.hero;
                 return (

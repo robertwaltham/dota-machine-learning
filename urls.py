@@ -7,7 +7,7 @@ router = routers.DefaultRouter()
 router.register(r'matches', views.MatchViewSet)
 router.register(r'heroes', views.HeroViewSet)
 router.register(r'items', views.ItemViewSet)
-router.register(r'herowithmatches', views.HeroWithMatchesSet, base_name='herowithmatches')
+router.register(r'herorecentmatches', views.HeroRecentMatchesSet, base_name='herorecentmatches')
 
 urlpatterns = patterns('',
                        url(r'^$', views.IndexView.as_view(), name='index'),
