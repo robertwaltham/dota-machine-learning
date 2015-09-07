@@ -7,6 +7,36 @@ var RouteHandler = Router.RouteHandler;
 //TODO: refactor handling of URLs passed in from the django template
 var apiURLs = [];
 
+
+// TODO: refactor message handling
+var startLoading = function () {
+};
+var finishLoading = function () {
+};
+
+var spinnerOptions = {
+    lines: 13 // The number of lines to draw
+    , length: 28 // The length of each line
+    , width: 14 // The line thickness
+    , radius: 42 // The radius of the inner circle
+    , scale: 1 // Scales overall size of the spinner
+    , corners: 1 // Corner roundness (0..1)
+    , color: '#666' // #rgb or #rrggbb or array of colors
+    , opacity: 0.25 // Opacity of the lines
+    , rotate: 0 // The rotation offset
+    , direction: 1 // 1: clockwise, -1: counterclockwise
+    , speed: 1 // Rounds per second
+    , trail: 60 // Afterglow percentage
+    , fps: 20 // Frames per second when using setTimeout() as a fallback for CSS
+    , zIndex: 2e9 // The z-index (defaults to 2000000000)
+    , className: 'spinner' // The CSS class to assign to the spinner
+    , top: '50%' // Top position relative to parent
+    , left: '50%' // Left position relative to parent
+    , shadow: false // Whether to render a shadow
+    , hwaccel: false // Whether to use hardware acceleration
+    , position: 'absolute' // Element positioning
+};
+
 function render(urls) {
     apiURLs = urls;
     var routes = (
@@ -27,6 +57,7 @@ function render(urls) {
 var DotaStats = React.createClass({
     render: function () {
         return (<div>
+            <LoadingSpinner/>
             <NavBar elements={['Heroes', 'Matches', 'Items']}/>
             <ContentBody ref="body">
                 <RouteHandler/>
@@ -49,15 +80,18 @@ var ItemBox = React.createClass({
         return {data: []};
     },
     componentDidMount: function () {
+        startLoading();
         $.ajax({
             url: apiURLs[2],
             dataType: 'json',
             cache: false,
             success: function (data) {
                 this.setState({data: data});
+                finishLoading();
             }.bind(this),
             error: function (xhr, status, err) {
                 console.error(this.props.url, status, err.toString());
+                finishLoading();
             }.bind(this)
         });
     },
@@ -100,15 +134,18 @@ var MatchBox = React.createClass({
         return {data: []};
     },
     componentDidMount: function () {
+        startLoading();
         $.ajax({
             url: apiURLs[1],
             dataType: 'json',
             cache: false,
             success: function (data) {
                 this.setState({data: data.results});
+                finishLoading();
             }.bind(this),
             error: function (xhr, status, err) {
                 console.error(this.props.url, status, err.toString());
+                finishLoading();
             }.bind(this)
         });
     },
@@ -187,15 +224,18 @@ var HeroBox = React.createClass({
         return {data: []};
     },
     componentDidMount: function () {
+        startLoading();
         $.ajax({
             url: apiURLs[0],
             dataType: 'json',
             cache: false,
             success: function (data) {
                 this.setState({data: data});
+                finishLoading();
             }.bind(this),
             error: function (xhr, status, err) {
                 console.error(this.props.url, status, err.toString());
+                finishLoading();
             }.bind(this)
         });
     },
@@ -273,29 +313,32 @@ var NavBar = React.createClass({
  */
 var HeroDetailBox = React.createClass({
     getInitialState: function () {
-        return {data: null};
+        return {data: null, loading: true};
     },
     componentDidMount: function () {
         this.loadHeroDetails(this.props.params.id);
     },
-    componentWillReceiveProps: function(props){
+    componentWillReceiveProps: function (props) {
         this.loadHeroDetails(props.params.id);
     },
-    loadHeroDetails:function(id){
+    loadHeroDetails: function (id) {
+        startLoading();
         $.ajax({
             url: apiURLs[3] + id,
             dataType: 'json',
             cache: false,
             success: function (data) {
-                this.setState({data: data});
+                this.setState({data: data, loading: false});
+                finishLoading();
             }.bind(this),
             error: function (xhr, status, err) {
                 console.error(this.props.url, status, err.toString());
+                finishLoading();
             }.bind(this)
         });
     },
     render: function () {
-        if (this.state.data == null) {
+        if (this.state.data == null || this.state.loading) {
             return (
                 <div></div>
             )
@@ -361,6 +404,31 @@ var MatchHeroImage = React.createClass({
             <Link to="Hero/:id" params={{id: hero.hero_id, url:hero.url}}>
                 <img src={hero.small_hero_image}/>
             </Link>
+        )
+    }
+});
+
+
+var LoadingSpinner = React.createClass({
+    _startLoading: function () {
+        this.setState({count: this.state.count + 1});
+    },
+    _finishLoading: function () {
+        this.setState({count: this.state.count - 1});
+    },
+    getInitialState: function () {
+        return {count: 0};
+    },
+    componentDidMount: function () {
+        var spinner = new Spinner(spinnerOptions).spin(React.findDOMNode(this.refs.spinAnchor));
+        // bind message handlers for showing/hiding spinner
+        startLoading = this._startLoading.bind(this);
+        finishLoading = this._finishLoading.bind(this)
+    },
+    render: function () {
+        var hidden = this.state.count > 0 ? {} : {display: 'none'};
+        return (
+            <div style={hidden} className="loading-spinner-wrap" ref="spinAnchor"></div>
         )
     }
 });

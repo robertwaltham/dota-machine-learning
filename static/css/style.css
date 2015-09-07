@@ -1,3 +1,12 @@
 .match-table td{
     padding:0 5px;
 }
+
+.loading-spinner-wrap{
+    opacity: 0.5;
+    background-color: #FFFFFF;
+    width:100%;
+    height: 100%;
+    position:fixed;
+    z-index: 1000;
+}
