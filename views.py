@@ -75,70 +75,11 @@ class AjaxLoadMatchesFromAPI(LoginRequiredMixin, JSONView):
             status=DotaApi.get_new_matches_by_sequence_from_api(), **kwargs)
 
 
-class AjaxLoadDetailsForAll(LoginRequiredMixin, JSONView):
-
-    def get_context_data(self, **kwargs):
-        return super(AjaxLoadDetailsForAll, self).get_context_data(count=len(Match.batch_process_matches()), **kwargs)
-
-
-class AjaxGetMatchList(LoginRequiredMixin, JSONView):
-
-    def get_context_data(self, **kwargs):
-        return super(AjaxGetMatchList, self).get_context_data(matches=Match.get_all_limited(), **kwargs)
-
-
 class AjaxLoadStaticDataView(LoginRequiredMixin, JSONView):
 
     def get_context_data(self, **kwargs):
         return super(AjaxLoadStaticDataView, self).get_context_data(heroes=DotaApi.load_heroes_from_api(),
                                                                     items=DotaApi.load_items_from_api(), **kwargs)
-
-
-class AjaxGetMatchCount(JSONView):
-
-    def get_context_data(self, **kwargs):
-        return super(AjaxGetMatchCount, self).get_context_data(matches=Match.get_count(),
-                                                               unprocessed=Match.get_count_unprocessed(), **kwargs)
-
-
-class AjaxUpdateMatchDetails(SingleObjectMixin, JSONView, LoginRequiredMixin):
-    model = Match
-    context_object_name = 'match'
-    object = None
-
-    def get_context_data(self, **kwargs):
-        match = self.get_object()
-        match.load_details_from_api()
-        return super(AjaxUpdateMatchDetails, self).get_context_data(
-            heroes=list(match.get_heroes_for_match().values('hero_id', 'localized_name')),
-            **kwargs)
-
-
-class HeroDetailView(DetailView):
-    template_name = 'DotaStats/hero.html'
-    model = Hero
-    context_object_name = 'hero'
-
-    def get_queryset(self):
-        return super(HeroDetailView, self).get_queryset()
-
-    def get_context_data(self, **kwargs):
-        return super(HeroDetailView, self).get_context_data(
-            matches=Match.get_matches_for_hero_id(self.object.hero_id), **kwargs)
-
-
-class MatchDetailView(DetailView):
-    template_name = 'DotaStats/match.html'
-    model = Match
-    context_object_name = 'match'
-
-    def get_queryset(self):
-        return super(MatchDetailView, self).get_queryset().prefetch_related('playerinmatch', 'playerinmatch__hero')
-
-    def get_context_data(self, **kwargs):
-        context = super(MatchDetailView, self).get_context_data()
-        context['related'] = self.object.get_related_matches()
-        return context
 
 
 class BuildDataView(View):
