@@ -167,6 +167,9 @@ class Item(models.Model):
     def get_image(self):
         return static('image/items/' + self.name[5:] + '.png')
 
+    def get_small_image(self):
+        return static('image/small_items/' + self.name[5:] + '.png')
+
     @staticmethod
     def load_items_from_api():
         url = items.format(DotaAPIKey, language)
