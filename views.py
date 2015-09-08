@@ -10,6 +10,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User, Group
 from django.core.urlresolvers import reverse
 from django import http
+
 from rest_framework import viewsets, pagination
 
 from models import Match, Item, Hero, ScikitModel, MatchPrediction
@@ -17,6 +18,7 @@ from serializers import UserSerializer, GroupSerializer, HeroSerializer, \
     MatchSerializer, ItemSerializer, HeroRecentMatches
 from forms import PredictionForm, ModelTestForm
 from scikit import DotaModel
+from dota import DotaApi
 
 
 class LoginRequiredMixin(object):
@@ -61,12 +63,8 @@ class AdminView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super(AdminView, self).get_context_data(**kwargs)
         context['count'] = Match.get_all().filter(valid_for_model=True).count()
-        context['matches'] = []
-        context['processed'] = Match.get_count_unprocessed()
-        context['models'] = ScikitModel.objects.filter(is_ready=True).count()
         context['heroes'] = Hero.get_serialized_hero_list()
         context['date_count'] = Match.get_count_by_date()
-        print context['date_count']
         return context
 
 
@@ -74,7 +72,7 @@ class AjaxLoadMatchesFromAPI(LoginRequiredMixin, JSONView):
 
     def get_context_data(self, **kwargs):
         return super(AjaxLoadMatchesFromAPI, self).get_context_data(
-            status=Match.get_new_matches_by_sequence_from_api(), **kwargs)
+            status=DotaApi.get_new_matches_by_sequence_from_api(), **kwargs)
 
 
 class AjaxLoadDetailsForAll(LoginRequiredMixin, JSONView):
@@ -92,8 +90,8 @@ class AjaxGetMatchList(LoginRequiredMixin, JSONView):
 class AjaxLoadStaticDataView(LoginRequiredMixin, JSONView):
 
     def get_context_data(self, **kwargs):
-        return super(AjaxLoadStaticDataView, self).get_context_data(heroes=Hero.load_heroes_from_api(),
-                                                                    items=Item.load_items_from_api(), **kwargs)
+        return super(AjaxLoadStaticDataView, self).get_context_data(heroes=DotaApi.load_heroes_from_api(),
+                                                                    items=DotaApi.load_items_from_api(), **kwargs)
 
 
 class AjaxGetMatchCount(JSONView):

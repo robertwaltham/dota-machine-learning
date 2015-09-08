@@ -14,17 +14,8 @@ from django.core.urlresolvers import reverse
 from django.db.models import Count, Q
 from django.core.serializers.json import DjangoJSONEncoder
 
-from website.settings import DotaAPIKey
 from djcelery.picklefield import PickledObjectField
 
-api_base = 'https://api.steampowered.com'
-match_history = '/IDOTA2Match_570/GetMatchHistory/V001/'
-match_history_sequence = '/IDOTA2Match_570/GetMatchHistoryBySequenceNum/V001/?key={0}&start_at_match_seq_num={1}'
-details = '/IDOTA2Match_570/GetMatchDetails/V001/?match_id={0}&key={1}'
-heroes_url = 'https://api.steampowered.com/IEconDOTA2_570/GetHeroes/v001/?key={0}&language={1}'
-hero_stats_url = 'http://herostats.io:322/heroes/all'
-items = 'https://api.steampowered.com/IEconDOTA2_570/GetGameItems/v0001/?key={0}&language={1}'
-language = 'en_us'
 
 # Skill
 #     0 - Any
@@ -32,7 +23,7 @@ language = 'en_us'
 #     2 - High
 #     3 - Very High
 
-leavers = {
+LEAVERS = {
     0: 'n/a',
     1: 'Disconnected',
     2: 'Disconnected Too Long',
@@ -42,7 +33,7 @@ leavers = {
     6: 'Never Connected Too Long',
 }
 
-lobbies = {
+LOBBIES = {
     -1: "Invalid",
     0: "Public Matchmaking",
     1: "Practice",
@@ -55,7 +46,7 @@ lobbies = {
     8: "Solo Mid 1vs1"
 }
 
-game_modes = {
+GAME_MODES = {
     0: "Unknown",
     1: "All Pick",
     2: "Captain's Mode",
@@ -88,33 +79,6 @@ class Hero(models.Model):
     hero_id = models.IntegerField(primary_key=True, default=0)
     PRIMARY_ATTRIBUTE = ((0, 'STR'), (1, 'AGI'), (2, 'INT'))
     primary_attribute = models.IntegerField(choices=PRIMARY_ATTRIBUTE, default=0)
-
-    @staticmethod
-    def load_heroes_from_api():
-        url = heroes_url.format(DotaAPIKey, language)
-        try:
-            # load data from Dota 2 API
-            data = json.load(urllib2.urlopen(url))
-            result = 0
-            if data['result']['status'] == 200:
-                result = len(data['result']['heroes'])
-                for new_hero in data['result']['heroes']:
-                    hero, created = Hero.objects.get_or_create(hero_id=new_hero['id'])
-                    hero.name = new_hero['name']
-                    hero.localized_name = new_hero['localized_name']
-                    hero.save()
-
-            # load data from secondary API
-            for key, hero_data in json.load(urllib2.urlopen(hero_stats_url)).iteritems():
-                try:
-                    hero = Hero.objects.get(localized_name=hero_data['Name'])
-                    hero.primary_attribute = hero_data['PrimaryStat']
-                    hero.save()
-                except ObjectDoesNotExist as e:
-                    print "ObjectDoesNotExist"
-            return result
-        except urllib2.HTTPError as e:
-            return "HTTP error({0}): {1}".format(e.errno, e.strerror)
 
     @staticmethod
     def get_heroes_by_attribute():
@@ -170,29 +134,6 @@ class Item(models.Model):
     def get_small_image(self):
         return static('image/small_items/' + self.name[5:] + '.png')
 
-    @staticmethod
-    def load_items_from_api():
-        url = items.format(DotaAPIKey, language)
-        try:
-            data = json.load(urllib2.urlopen(url))
-            result = 0
-            if data['result']['status'] == 200:
-                result = len(data['result']['items'])
-                for new_item in data['result']['items']:
-                    item, created = Item.objects.get_or_create(item_id=new_item['id'])
-                    item.name = new_item['name']
-                    item.recipe = bool(new_item['recipe'])
-                    item.secret_shop = bool(new_item['secret_shop'])
-                    item.side_shop = bool(new_item['side_shop'])
-                    item.localized_name = new_item['localized_name']
-                    item.cost = int(new_item['cost'])
-                    item.save()
-                # Make sure an empty item exists
-                item, created = Item.objects.get_or_create(item_id=0)
-            return result
-        except urllib2.HTTPError as e:
-            return "HTTP error({0}): {1}".format(e.errno, e.strerror)
-
     def __unicode__(self):
         return self.localized_name
 
@@ -241,139 +182,6 @@ class Match(models.Model):
     def get_all_limited():
         return list(Match.objects.all().values('match_id', 'duration', 'radiant_win'))
 
-    @staticmethod
-    def get_match_api_url(game_mode=0, skill=0, date_min=0, date_max=0, min_players=10,
-                          start_at_match_id=0, matches_requested=100):
-
-        url = api_base + match_history + '?key=' + DotaAPIKey
-        # api is bugged and doesn't honor game mode flag
-        if game_mode > 0:
-            url += '&game_mode=' + str(game_mode)
-        if skill > 0:
-            url += '&skill=' + str(skill)
-        if date_min > 0:
-            url += '&date_min=' + str(date_min)
-        if date_max > 0:
-            url += '&date_max=' + str(date_max)
-        if min_players > 0:
-            url += '&min_players=' + str(min_players)
-        if start_at_match_id > 0:
-            url += '&start_at_match_id=' + str(start_at_match_id)
-        if matches_requested > 0:
-            url += '&matches_requested=' + str(matches_requested)
-
-        print url
-        return url
-
-    @staticmethod
-    def batch_get_matches_from_api(n=10):
-        from DotaStats.tasks import get_details
-        last_match = 0
-        counter = 0
-        requested_matches = 500
-        starting_match_id = 0
-        match_ids = []
-        for i in range(0, n, requested_matches):
-            url = Match.get_match_api_url(game_mode=1, matches_requested=requested_matches,
-                                          start_at_match_id=last_match)
-            print url
-            try:
-                data = json.load(urllib2.urlopen(url))
-                if data['result']['status'] == 1:
-                    print data['result']['num_results']
-                    if data['result']['num_results'] > 0 and starting_match_id == 0:
-                        starting_match_id = data['result']['matches'][0]['match_id']
-                    for match in data['result']['matches']:
-                        last_match = match['match_id']
-                        match_ids.append(last_match)
-                        start_time = datetime.datetime.fromtimestamp(match['start_time'])
-                        new_match, created = Match.objects.get_or_create(match_id=match['match_id'],
-                                                                         start_time=pytz.utc.localize(start_time),
-                                                                         match_seq_num=match['match_seq_num'],
-                                                                         lobby_type=match['lobby_type'])
-                        new_match.save()
-                        if created:
-                            get_details.apply_async((new_match.match_id,), countdown=counter)
-                            counter += 1
-                    if data['result']['results_remaining'] < requested_matches:
-                        break
-                else:
-                    return 'Status: {0}'.format(data['result']['status'])
-            except urllib2.HTTPError as e:
-                return 'HTTP error({0}): {1}'.format(e.errno, e.strerror)
-
-        return 'Created: {0}'.format(counter)
-
-    @staticmethod
-    def get_new_matches_from_api():
-        from DotaStats.tasks import get_details
-        url = Match.get_match_api_url(game_mode=1)
-        print url
-        try:
-            data = json.load(urllib2.urlopen(url))
-            counter = 0
-            if data['result']['status'] == 1:
-                for match in data['result']['matches']:
-                    start_time = datetime.datetime.fromtimestamp(match['start_time'])
-                    new_match, created = Match.objects.get_or_create(match_id=match['match_id'],
-                                                                     start_time=pytz.utc.localize(start_time),
-                                                                     match_seq_num=match['match_seq_num'],
-                                                                     lobby_type=match['lobby_type'])
-                    new_match.save()
-                    if created:
-                        get_details.apply_async((new_match.match_id,), countdown=counter)
-                        counter += 1
-            return counter
-        except urllib2.HTTPError as e:
-            return "HTTP error({0}): {1}".format(e.errno, e.strerror)
-
-    @staticmethod
-    def get_new_matches_by_sequence_from_api(match_seq_num=None):
-        from DotaStats.tasks import process_match
-        # get sequence number of latest match
-        if not match_seq_num:
-            latest_match_url = Match.get_match_api_url(matches_requested=1)
-            try:
-                latest_match_data = json.load(urllib2.urlopen(latest_match_url))
-                if latest_match_data['result']['status'] == 1:
-                    match_seq_num = latest_match_data['result']['matches'][0]['match_seq_num']
-                else:
-                    return "API Error {0}".format(latest_match_data['result']['status'])
-
-            except urllib2.HTTPError as e:
-                return "HTTP error({0}): {1}".format(e.errno, e.strerror)
-
-        api_has_more_matches = True
-        match_data = None
-        n_matches_created = 0
-        requests = 0
-        # get matches until there are no new matches
-        while api_has_more_matches:
-            match_seq_url = api_base + match_history_sequence.format(DotaAPIKey, match_seq_num)
-            try:
-                match_data = json.load(urllib2.urlopen(match_seq_url))
-            except urllib2.HTTPError as e:
-                return "HTTP error({0}): {1}".format(e.errno, e.strerror)
-
-            if match_data['result']['status'] == 1:
-                if len(match_data['result']['matches']) == 0:
-                    api_has_more_matches = False
-                    break
-
-                for match in match_data['result']['matches']:
-                    process_match.apply_async((match,))
-                    if int(match['match_seq_num']) > match_seq_num:
-                        match_seq_num = int(match['match_seq_num'])
-                    n_matches_created += 1
-            else:
-                return "API Error {0}".format(match_data['result']['status'])
-
-            # sanity
-            requests += 1
-            if requests >= 5:
-                break
-
-        return "Created: {0} Requests: {1}".format(n_matches_created, requests)
 
     @staticmethod
     def process_match_info(match):
@@ -457,25 +265,6 @@ class Match(models.Model):
                 'radiant': Match.objects.filter(has_been_processed=True, radiant_win=True).count()}
 
     @staticmethod
-    def get_unprocessed_match(n):
-        unprocessed = Match.objects.filter(has_been_processed=False).order_by('match_id')
-        return unprocessed[:n]
-
-    @staticmethod
-    def batch_process_matches():
-        from DotaStats.tasks import get_details
-        unprocessed = Match.objects.filter(has_been_processed=False).order_by('match_id')[:100]
-        counter = 0
-        for match in unprocessed:
-            get_details.apply_async((match.match_id,), countdown=counter)
-            counter += 1
-        return unprocessed
-
-    @staticmethod
-    def get_count_unprocessed():
-        return Match.objects.filter(valid_for_model=True, has_been_processed=True).count()
-
-    @staticmethod
     def get_count():
         return Match.objects.count()
 
@@ -486,68 +275,6 @@ class Match(models.Model):
                                .values('start_time')
                                .annotate(created_count=Count('match_id'))),
                           cls=DjangoJSONEncoder)
-
-    def get_details_url(self):
-        return api_base + details.format(self.match_id, DotaAPIKey)
-
-    def load_details_from_api(self):
-        url = self.get_details_url()
-        try:
-            data = json.load(urllib2.urlopen(url))
-            if data['result']:
-                result = data['result']
-                self.radiant_win = bool(result['radiant_win'])
-                self.duration = int(result['duration'])
-                self.tower_status_radiant = int(result['tower_status_radiant'])
-                self.tower_status_dire = int(result['tower_status_dire'])
-                self.barracks_status_radiant = int(result['barracks_status_radiant'])
-                self.barracks_status_dire = int(result['barracks_status_dire'])
-                self.cluster = int(result['cluster'])
-                self.first_blood_time = int(result['first_blood_time'])
-                self.lobby_type = int(result['lobby_type'])
-                self.human_players = int(result['human_players'])
-                self.game_mode = int(result['game_mode'])
-                for player_in_game in result['players']:
-                    hero, created = Hero.objects.get_or_create(hero_id=player_in_game['hero_id'])
-                    item_0, created = Item.objects.get_or_create(item_id=player_in_game["item_0"])
-                    item_1, created = Item.objects.get_or_create(item_id=player_in_game["item_1"])
-                    item_2, created = Item.objects.get_or_create(item_id=player_in_game["item_2"])
-                    item_3, created = Item.objects.get_or_create(item_id=player_in_game["item_3"])
-                    item_4, created = Item.objects.get_or_create(item_id=player_in_game["item_4"])
-                    item_5, created = Item.objects.get_or_create(item_id=player_in_game["item_5"])
-                    player, created = \
-                        Player.objects.get_or_create(account_id=player_in_game['account_id'])
-
-                    PlayerInMatch.objects.get_or_create(
-                        match_id=self.match_id,
-                        player_slot=player_in_game['player_slot'],
-                        hero=hero,
-                        item_0=item_0,
-                        item_1=item_1,
-                        item_2=item_2,
-                        item_3=item_3,
-                        item_4=item_4,
-                        item_5=item_5,
-                        kills=player_in_game['kills'],
-                        deaths=player_in_game['deaths'],
-                        assists=player_in_game['assists'],
-                        leaver_status=player_in_game['leaver_status'],
-                        gold=player_in_game['gold'],
-                        last_hits=player_in_game['last_hits'],
-                        denies=player_in_game['denies'],
-                        gold_per_min=player_in_game['gold_per_min'],
-                        xp_per_min=player_in_game['xp_per_min'],
-                        gold_spent=player_in_game['gold_spent'],
-                        hero_damage=player_in_game['hero_damage'],
-                        tower_damage=player_in_game['tower_damage'],
-                        hero_healing=player_in_game['hero_healing'],
-                        level=player_in_game['level'],
-                        player=player)
-                self.has_been_processed = True
-                self.save()
-            return data
-        except urllib2.HTTPError as e:
-            return "HTTP error({0}): {1}".format(e.errno, e.strerror)
 
     def get_heroes_for_match(self):
         return Hero.objects.filter(heroinmatch__match__match_id=self.match_id)
