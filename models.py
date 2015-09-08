@@ -187,6 +187,8 @@ class Item(models.Model):
                     item.localized_name = new_item['localized_name']
                     item.cost = int(new_item['cost'])
                     item.save()
+                # Make sure an empty item exists
+                item, created = Item.objects.get_or_create(item_id=0)
             return result
         except urllib2.HTTPError as e:
             return "HTTP error({0}): {1}".format(e.errno, e.strerror)
@@ -447,7 +449,7 @@ class Match(models.Model):
                 pass
         new_match.valid_for_model = valid_match
         new_match.save()
-        return created
+        return valid_match
 
     @staticmethod
     def get_winrate():
