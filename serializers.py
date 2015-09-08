@@ -18,13 +18,17 @@ class GroupSerializer(serializers.HyperlinkedModelSerializer):
 
 class ItemSerializer(serializers.ModelSerializer):
     image = serializers.SerializerMethodField()
+    small_image = serializers.SerializerMethodField()
+
+    def get_small_image(self, item):
+        return item.get_small_image()
 
     def get_image(self, item):
         return item.get_image()
 
     class Meta:
         model = Item
-        fields = ('item_id', 'image', 'name', 'localized_name', 'url')
+        fields = ('item_id', 'image', 'small_image', 'name', 'localized_name', 'url')
 
 
 class HeroSerializer(serializers.ModelSerializer):
@@ -62,7 +66,9 @@ class MatchSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Match
-        fields = ('match_id', 'url', 'radiant_win', 'playerinmatch')
+        fields = ('match_id', 'url', 'radiant_win', 'playerinmatch', 'start_time',
+                  'match_seq_num', 'radiant_win', 'duration', 'first_blood_time',
+                  'lobby_type', 'human_players', 'game_mode', 'skill')
 
 
 class HeroRecentMatches(serializers.ModelSerializer):

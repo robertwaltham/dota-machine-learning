@@ -1,12 +1,39 @@
-.match-table td{
-    padding:0 5px;
+.match-table td {
+    padding: 0 5px;
 }
 
-.loading-spinner-wrap{
+.loading-spinner-wrap {
     opacity: 0.5;
     background-color: #FFFFFF;
-    width:100%;
+    width: 100%;
     height: 100%;
-    position:fixed;
+    position: fixed;
     z-index: 1000;
+}
+
+.hero-image {
+    width: 128px;
+    height: 72px;
+}
+
+.hero-image-small {
+    width: 64px;
+    height: 36px;
+}
+
+.item-image {
+    width: 90px;
+    height: 64px;
+    overflow: hidden;
+}
+
+.match-detail-item {
+    width: 44px;
+    height: 32px;
+    display: inline-block;
+    background-color: #bbbbbb;
+    overflow: hidden;
+}
+
+.match-detail-item.empty {
 }

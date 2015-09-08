@@ -50,6 +50,7 @@ function render(urls) {
             <Route name="Matches" handler={MatchBox}/>
             <Route name="Items" handler={ItemBox}/>
             <Route name="Hero/:id" handler={HeroDetailBox}/>
+            <Route name="Match/:id" handler={MatchDetailBox}/>
             <DefaultRoute handler={HeroBox}/>
         </Route>
     );
@@ -114,17 +115,17 @@ var ItemList = React.createClass({
     render: function () {
         var itemNodes = this.props.data.map(function (item) {
             return (
-                <div className="col-md-2 col-sm-3">
-                    <a href={item.url}>
-                        <img src={item.image}/>
-                        {item.localized_name}
-                    </a>
-
+                <div className="col-md-1 col-sm-2">
+                    <div className="item-image">
+                        <a href={item.url}>
+                            <img src={item.image}/>
+                        </a>
+                    </div>
                 </div>
             );
         });
         return (
-            <div className="item-list">
+            <div className="row">
                 {itemNodes}
             </div>
         );
@@ -193,9 +194,9 @@ var Match = React.createClass({
             <div className="col-md-12">
                 <div className="row">
                     <div className="col-md-2">
-                        <a href={match.url}>
+                        <Link to="Match/:id" params={{id:match.match_id, url:match.url}}>
                             {match.match_id}
-                        </a>
+                        </Link>
                     </div>
                     <div className="col-md-10">
                         {playerNodes}
@@ -213,7 +214,9 @@ var HeroList = React.createClass({
     render: function () {
         var heroNodes = this.props.data.map(function (hero) {
             return (
-                <Hero key={hero.hero_id} hero={hero}/>
+                <div className="col-md-3 col-sm-4">
+                    <Hero key={hero.hero_id} hero={hero}/>
+                </div>
             );
         });
         return (
@@ -257,14 +260,15 @@ var HeroBox = React.createClass({
 var Hero = React.createClass({
     render: function () {
         var hero = this.props.hero;
-        return (
-            <div className="col-md-3 col-sm-4">
-                <Link to="Hero/:id" params={{id: hero.hero_id, url:hero.url}}>
-                    <img src={hero.hero_image}/>
+        var image = this.props.use_small_image ? hero.small_hero_image : hero.hero_image;
+        var imageClass = this.props.use_small_image ? 'hero-image-small' : 'hero-image';
 
-                    <div>{hero.localized_name}</div>
-                </Link>
-            </div>
+        return (
+            <Link to="Hero/:id" params={{id: hero.hero_id, url:hero.url}}>
+                <img className={imageClass} src={image}/>
+
+                <div>{hero.localized_name}</div>
+            </Link>
         )
     }
 });
@@ -400,7 +404,7 @@ var HeroDetail = React.createClass({
             <div className="col-md-12">
                 <div className="row">
                     <div className="col-md-2">
-                        <img src={hero.hero_image}/>
+                        <img className="hero-image" src={hero.hero_image}/>
                     </div>
                     <div className="col-md-10">
                         <h2>{hero.localized_name}</h2>
@@ -421,7 +425,7 @@ var MatchHeroImage = React.createClass({
         var hero = this.props.hero;
         return (
             <Link to="Hero/:id" params={{id: hero.hero_id, url:hero.url}}>
-                <img src={hero.small_hero_image}/>
+                <img className="hero-image-small" src={hero.small_hero_image}/>
             </Link>
         )
     }
@@ -448,6 +452,168 @@ var LoadingSpinner = React.createClass({
         var hidden = this.state.count > 0 ? {} : {display: 'none'};
         return (
             <div style={hidden} className="loading-spinner-wrap" ref="spinAnchor"></div>
+        )
+    }
+});
+
+/**
+ *
+ */
+var MatchDetailBox = React.createClass({
+    getInitialState: function () {
+        return {match: null};
+    },
+    componentDidMount: function () {
+        startLoading();
+        // load match
+        $.ajax({
+            url: apiURLs.matchList + this.props.params.id,
+            dataType: 'json',
+            cache: false,
+            success: function (data) {
+                this.setState({match: data});
+                finishLoading();
+            }.bind(this),
+            error: function (xhr, status, err) {
+                console.error(this.props.url, status, err.toString());
+                finishLoading();
+            }.bind(this)
+        });
+    },
+    render: function () {
+        if (this.state.match == null) {
+            return (
+                <div></div>
+            )
+        } else {
+            return (
+                <MatchDetail match={this.state.match}/>
+            )
+        }
+    }
+});
+
+var MatchDetail = React.createClass({
+    render: function () {
+        var match = this.props.match;
+        var teams = _.partition(match.playerinmatch, function (playerinmatch) {
+            return playerinmatch.player_slot < 128; // 128 and above is on team dire
+        });
+        var radiantWin = match.radiant_win ? 'Radiant Win' : 'Dire Win';
+        return (
+            <div>
+                <div className="row">
+                    <div className="col-md-12">
+                        <h1>Match {match.match_id} Detail</h1>
+                    </div>
+                </div>
+                <div className="row">
+                    <div className="col-md-12">
+                        <ul>
+                            <li>Start Time: {match.start_time}</li>
+                            <li>Sequence Number: {match.match_seq_num}</li>
+                            <li>Duration: {match.duration}s</li>
+                            <li>First Blood: {match.first_blood_time}s</li>
+                            <li>Lobby Type: {match.lobby_type}</li>
+                            <li>Human Players: {match.human_players}</li>
+                            <li>Game Mode: {match.game_mode}</li>
+                            <li>Skill: {match.skill}</li>
+                            <li>{radiantWin}</li>
+                        </ul>
+                    </div>
+                </div>
+                <div className="row">
+                    <div className="col-md-6">
+                        <h3>Radiant</h3>
+                        <MatchTeamDetail team={teams[0]}/>
+                    </div>
+                    <div className="col-md-6">
+                        <h3>Dire</h3>
+                        <MatchTeamDetail team={teams[1]}/>
+                    </div>
+                </div>
+            </div>
+
+        )
+
+    }
+});
+
+var MatchTeamDetail = React.createClass({
+    render: function () {
+        var team = this.props.team;
+        var teamNodes = team.map(function (player) {
+            return (
+                <MatchPlayerDetail player={player}/>
+            )
+        });
+        return (
+            <div>{teamNodes}</div>
+        )
+    }
+});
+
+var MatchPlayerDetail = React.createClass({
+    render: function () {
+        var player = this.props.player;
+        return (
+            <div className="row">
+                <div className="col-md-5">
+                    <MatchPlayerHeroDetail hero={player.hero} use_small_image={true}/>
+                </div>
+                <div className="col-md-7">
+                    <MatchPlayerItemDetail item={player.item_0}/>
+                    <MatchPlayerItemDetail item={player.item_1}/>
+                    <MatchPlayerItemDetail item={player.item_2}/>
+                    <MatchPlayerItemDetail item={player.item_3}/>
+                    <MatchPlayerItemDetail item={player.item_4}/>
+                    <MatchPlayerItemDetail item={player.item_5}/>
+                </div>
+            </div>
+        )
+    }
+});
+
+var MatchPlayerItemDetail = React.createClass({
+    render: function () {
+        var item = this.props.item;
+        if (item && item.item_id > 0) {
+            return (
+                <div className="match-detail-item">
+                    <a href={item.url}>
+                        <img src={item.small_image}/>
+                    </a>
+                </div>
+
+            )
+        } else {
+            return (
+                <div className="match-detail-item empty">
+                    &nbsp;
+                </div>
+            )
+        }
+
+    }
+});
+
+var MatchPlayerHeroDetail = React.createClass({
+    render: function () {
+        var hero = this.props.hero;
+        var image = this.props.use_small_image ? hero.small_hero_image : hero.hero_image;
+        var imageClass = this.props.use_small_image ? 'hero-image-small' : 'hero-image';
+
+        return (
+            <Link to="Hero/:id" params={{id: hero.hero_id, url:hero.url}}>
+                <div className="row">
+                    <div className="col-md-4">
+                        <img className={imageClass} src={image}/>
+                    </div>
+                    <div className="col-md-8">
+                        <div>{hero.localized_name}</div>
+                    </div>
+                </div>
+            </Link>
         )
     }
 });
