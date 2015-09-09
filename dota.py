@@ -97,7 +97,7 @@ class DotaApi:
         return url
 
     @staticmethod
-    def get_new_matches_by_sequence_from_api(match_seq_num=None):
+    def get_new_matches_by_sequence_from_api(match_seq_num=None, max_requests=5):
         from DotaStats.tasks import process_match
 
         # get sequence number of latest match
@@ -140,7 +140,8 @@ class DotaApi:
 
             # sanity
             requests += 1
-            if requests >= 5:
+            if requests >= max_requests:
                 break
 
-        return "Created: {0} Requests: {1}".format(n_matches_created, requests)
+        # each subsequent request will have 1 match that overlaps
+        return n_matches_created - requests + 1
