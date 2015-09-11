@@ -99,52 +99,41 @@ class DotaApi:
 
         return url
 
+
     @staticmethod
-    def get_new_matches_by_sequence_from_api(match_seq_num=None, max_requests=5):
+    def load_matches_from_api_by_sequence_number(match_sequence_number=None):
         from DotaStats.tasks import process_match
 
-        # get sequence number of latest match
-        if not match_seq_num:
-            latest_match_url = DotaApi.get_match_api_url(matches_requested=1)
-            try:
-                latest_match_data = json.load(urllib2.urlopen(latest_match_url))
-                if latest_match_data['result']['status'] == 1:
-                    match_seq_num = latest_match_data['result']['matches'][0]['match_seq_num']
-                else:
-                    return "API Error {0}".format(latest_match_data['result']['status'])
-
-            except urllib2.HTTPError as e:
-                return "HTTP error({0}): {1}".format(e.errno, e.strerror)
-
-        api_has_more_matches = True
-        n_matches_created = 0
-        requests = 0
-
-        # get matches until there are no new matches
-        while api_has_more_matches:
-            match_seq_url = API_BASE + API_MATCH_HISTORY_SEQUENCE.format(settings.DOTA_API_KEY, match_seq_num)
-            try:
-                match_data = json.load(urllib2.urlopen(match_seq_url))
-            except urllib2.HTTPError as e:
-                return "HTTP error({0}): {1}".format(e.errno, e.strerror)
-
+        match_seq_url = API_BASE + API_MATCH_HISTORY_SEQUENCE.format(settings.DOTA_API_KEY, match_sequence_number)
+        r = requests.get(match_seq_url)
+        r.raise_for_status()
+        if r.status_code == requests.codes.ok:
+            match_data = r.json()
             if match_data['result']['status'] == 1:
                 if len(match_data['result']['matches']) == 0:
-                    api_has_more_matches = False
-                    break
+                    return False
 
                 for match in match_data['result']['matches']:
                     process_match.apply_async((match,))
-                    if int(match['match_seq_num']) > match_seq_num:
-                        match_seq_num = int(match['match_seq_num'])
-                    n_matches_created += 1
+                    if int(match['match_seq_num']) > match_sequence_number:
+                        match_sequence_number = int(match['match_seq_num'])
+                return match_sequence_number
             else:
-                return "API Error {0}".format(match_data['result']['status'])
+                return False
 
-            # sanity
-            requests += 1
-            if requests >= max_requests:
-                break
+    @staticmethod
+    def load_matches_from_api():
+        latest_match_url = DotaApi.get_match_api_url(matches_requested=1)
+        r = requests.get(latest_match_url)
+        r.raise_for_status()
+        if r.status_code == requests.codes.ok:
+            latest_match_data = r.json()
+            if latest_match_data['result']['status'] == 1:
+                match_seq_num = latest_match_data['result']['matches'][0]['match_seq_num']
 
-        # each subsequent request will have 1 match that overlaps
-        return n_matches_created - requests + 1
+                # get matches until there are no new matches, max 10 requests
+                for i in range(0, 10):
+                    if match_seq_num is not False:
+                        match_seq_num = DotaApi.load_matches_from_api_by_sequence_number(match_sequence_number=match_seq_num)
+                    else:
+                        break

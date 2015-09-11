@@ -72,7 +72,7 @@ class AjaxLoadMatchesFromAPI(LoginRequiredMixin, JSONView):
 
     def get_context_data(self, **kwargs):
         return super(AjaxLoadMatchesFromAPI, self).get_context_data(
-            status=DotaApi.get_new_matches_by_sequence_from_api(), **kwargs)
+            status=DotaApi.load_matches_from_api(), **kwargs)
 
 
 class AjaxLoadStaticDataView(LoginRequiredMixin, JSONView):

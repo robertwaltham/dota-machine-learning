@@ -7,7 +7,7 @@ from DotaStats.dota import DotaApi
 
 @app.task
 def load_matches():
-    return DotaApi.get_new_matches_by_sequence_from_api()
+    return DotaApi.load_matches_from_api()
 
 @app.task
 def build_model(n_matches, model_id):

@@ -1,6 +1,4 @@
-import mock
-import os
-import json
+import mock, time
 from random import randint
 
 from requests.models import Response
@@ -9,7 +7,7 @@ from faker import Factory as FakerFactory
 from django.test import TestCase, TransactionTestCase
 
 from DotaStats.dota import DotaApi
-from DotaStats.models import Hero, Item, Match
+from DotaStats.models import Hero, Item, Player, Match
 
 # run celery task synchronous
 from django.conf import settings
@@ -27,6 +25,23 @@ class HeroFactory(factory.DjangoModelFactory):
 
     class Meta:
         model = Hero
+
+
+class ItemFactory(factory.DjangoModelFactory):
+    name = factory.LazyAttribute(lambda o: fake.name().lower())
+    localized_name = factory.LazyAttribute(lambda o: fake.name())
+    item_id = factory.Sequence(lambda n: n)
+
+    class Meta:
+        model = Item
+
+
+class PlayerFactory(factory.DjangoModelFactory):
+    name = factory.LazyAttribute(lambda o: fake.name().lower())
+    account_id = factory.Sequence(lambda n: n)
+
+    class Meta:
+        model = Player
 
 
 class APITestAssetLoading(TestCase):
@@ -116,9 +131,123 @@ class APITestAssetLoading(TestCase):
 class APITestMatchLoading(TransactionTestCase):
     def setUp(self):
         super(APITestMatchLoading, self).setUp()
-        DotaApi.load_heroes_from_api()
-        DotaApi.load_items_from_api()
+        self.items = [ItemFactory() for i in range(0, 10)]
+        self.players = [PlayerFactory() for i in range(0, 10)]
+        self.heroes = [HeroFactory() for i in range(0, 10)]
 
     def test_load_matches(self):
-        created = DotaApi.get_new_matches_by_sequence_from_api(max_requests=1)
-        self.assertEqual(created, Match.objects.all().count())
+        data = {
+            "result": {
+                "status": 1,
+                "num_results": 1,
+                "total_results": 500,
+                "results_remaining": 499,
+                "matches": [
+                    {
+                        "match_id": randint(0, 10000),
+                        "match_seq_num": randint(0, 10000),
+                    }
+                ]
+            }
+        }
+
+        response = Response()
+        response.status_code = 200
+        response.json = mock.MagicMock(return_value=data)
+        mocked_get = mock.MagicMock(return_value=response)
+
+        mocked_api_request = mock.MagicMock(return_value=False)
+
+        with mock.patch('requests.get', mocked_get):
+            with mock.patch('DotaStats.dota.DotaApi.load_matches_from_api_by_sequence_number', mocked_api_request):
+                created = DotaApi.load_matches_from_api()
+
+    def test_load_matches_by_sequence_empty_matches(self):
+        data = {
+            "result": {
+                "status": 1,
+                "matches": []
+            }
+        }
+
+        match_sequence_number = randint(0, 1000)
+
+        response = Response()
+        response.status_code = 200
+        response.json = mock.MagicMock(return_value=data)
+        mocked_get = mock.MagicMock(return_value=response)
+
+        with mock.patch('requests.get', mocked_get):
+            response = DotaApi.load_matches_from_api_by_sequence_number(match_sequence_number=match_sequence_number)
+            self.assertGreaterEqual(response, False)
+
+    def test_load_matches_by_sequence(self):
+        slots = [0, 1, 2, 3, 4, 128, 129, 130, 131, 132]
+        matches = []
+        for i in range(0, 10):
+            players = []
+            for j in range(0, 10):
+                players.append({
+                    "account_id": self.players[j].account_id,
+                    "player_slot": slots[j],
+                    "hero_id": self.heroes[j].hero_id,
+                    "item_0": self.items[randint(0, 9)].item_id,
+                    "item_1": self.items[randint(0, 9)].item_id,
+                    "item_2": self.items[randint(0, 9)].item_id,
+                    "item_3": self.items[randint(0, 9)].item_id,
+                    "item_4": self.items[randint(0, 9)].item_id,
+                    "item_5": self.items[randint(0, 9)].item_id,
+                    "kills": randint(0, 9),
+                    "deaths": randint(0, 9),
+                    "assists": randint(0, 9),
+                    "leaver_status": 0,
+                    "gold": randint(0, 1000),
+                    "last_hits": randint(0, 100),
+                    "denies": randint(0, 10),
+                    "gold_per_min": randint(0, 700),
+                    "xp_per_min": randint(0, 700),
+                    "gold_spent": randint(0, 10000),
+                    "hero_damage": randint(0, 900),
+                    "tower_damage": randint(0, 900),
+                    "hero_healing": randint(0, 900),
+                    "level": randint(0, 25)
+                })
+            matches.append({
+                "players": players,
+                "radiant_win": False,
+                "duration": randint(0, 1000),
+                "start_time": time.time(),
+                "match_id": i,
+                "match_seq_num": i,
+                "tower_status_radiant": randint(0, 128),
+                "tower_status_dire": randint(0, 128),
+                "barracks_status_radiant": randint(0, 128),
+                "barracks_status_dire": randint(0, 128),
+                "cluster": 0,
+                "first_blood_time": randint(0, 128),
+                "lobby_type": 0,
+                "human_players": 10,
+                "leagueid": 0,
+                "positive_votes": 0,
+                "negative_votes": 0,
+                "game_mode": 0,
+                "engine": 0
+            })
+
+        data = {
+            "result": {
+                "status": 1,
+                "matches": matches
+            }
+        }
+
+        match_sequence_number = randint(0, 1000)
+
+        response = Response()
+        response.status_code = 200
+        response.json = mock.MagicMock(return_value=data)
+        mocked_get = mock.MagicMock(return_value=response)
+
+        with mock.patch('requests.get', mocked_get):
+            response = DotaApi.load_matches_from_api_by_sequence_number(match_sequence_number=match_sequence_number)
+            self.assertGreaterEqual(Match.objects.all().count(), 10)
