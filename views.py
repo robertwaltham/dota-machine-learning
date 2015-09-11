@@ -79,7 +79,9 @@ class AjaxLoadStaticDataView(LoginRequiredMixin, JSONView):
 
     def get_context_data(self, **kwargs):
         return super(AjaxLoadStaticDataView, self).get_context_data(heroes=DotaApi.load_heroes_from_api(),
-                                                                    items=DotaApi.load_items_from_api(), **kwargs)
+                                                                    items=DotaApi.load_items_from_api(),
+                                                                    attributes=DotaApi.load_hero_attribute_from_api(),
+                                                                    **kwargs)
 
 
 class BuildDataView(View):
