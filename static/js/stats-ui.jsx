@@ -390,7 +390,9 @@ var HeroDetail = React.createClass({
 
                 <div className="row">
                     <div className="col-md-2">
-                        {match.match_id}
+                        <Link to="Match/:id" params={{id:match.match_id, url:match.url}}>
+                            {match.match_id}
+                        </Link>
                     </div>
                     <div className="col-md-10">
                         {matches}
