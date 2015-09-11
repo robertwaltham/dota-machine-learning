@@ -82,3 +82,8 @@ class HeroRecentMatches(serializers.ModelSerializer):
     class Meta:
         model = Hero
         fields = ('matches',)
+
+
+class MatchDateCountSerializer(serializers.Serializer):
+    count = serializers.CharField(max_length=200)
+    date = serializers.CharField(max_length=200)

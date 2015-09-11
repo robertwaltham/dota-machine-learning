@@ -15,14 +15,13 @@ from rest_framework import viewsets, pagination
 
 from models import Match, Item, Hero, ScikitModel, MatchPrediction
 from serializers import UserSerializer, GroupSerializer, HeroSerializer, \
-    MatchSerializer, ItemSerializer, HeroRecentMatches
+    MatchSerializer, ItemSerializer, HeroRecentMatches, MatchDateCountSerializer
 from forms import PredictionForm, ModelTestForm
 from scikit import DotaModel
 from dota import DotaApi
 
 
 class LoginRequiredMixin(object):
-
     @classmethod
     def as_view(cls, *args, **kwargs):
         view = super(LoginRequiredMixin, cls).as_view(*args, **kwargs)
@@ -30,7 +29,6 @@ class LoginRequiredMixin(object):
 
 
 class JSONResponseMixin(object):
-
     def render_to_json_response(self, context, **kwargs):
         return http.JsonResponse(
             self.get_data(context),
@@ -43,7 +41,6 @@ class JSONResponseMixin(object):
 
 
 class JSONView(JSONResponseMixin, TemplateView):
-
     def render_to_response(self, context, **response_kwargs):
         return self.render_to_json_response(context, **response_kwargs)
 
@@ -64,19 +61,16 @@ class AdminView(TemplateView):
         context = super(AdminView, self).get_context_data(**kwargs)
         context['count'] = Match.get_all().filter(valid_for_model=True).count()
         context['heroes'] = Hero.get_serialized_hero_list()
-        context['date_count'] = Match.get_count_by_date()
         return context
 
 
 class AjaxLoadMatchesFromAPI(LoginRequiredMixin, JSONView):
-
     def get_context_data(self, **kwargs):
         return super(AjaxLoadMatchesFromAPI, self).get_context_data(
             status=DotaApi.load_matches_from_api(), **kwargs)
 
 
 class AjaxLoadStaticDataView(LoginRequiredMixin, JSONView):
-
     def get_context_data(self, **kwargs):
         return super(AjaxLoadStaticDataView, self).get_context_data(heroes=DotaApi.load_heroes_from_api(),
                                                                     items=DotaApi.load_items_from_api(),
@@ -85,7 +79,6 @@ class AjaxLoadStaticDataView(LoginRequiredMixin, JSONView):
 
 
 class BuildDataView(View):
-
     @staticmethod
     def get(request):
         model = ScikitModel.create_model()
@@ -135,7 +128,7 @@ class MatchListView(ListView):
     paginate_by = 50
 
     def get_queryset(self):
-        return super(MatchListView, self).get_queryset().filter(valid_for_model=True).order_by('-match_id')\
+        return super(MatchListView, self).get_queryset().filter(valid_for_model=True).order_by('-match_id') \
             .prefetch_related('playerinmatch', 'playerinmatch__hero')
 
 
@@ -179,7 +172,6 @@ class LogInView(FormView):
 
 
 class LogOutView(View):
-
     def get(self, request):
         logout(request)
         return redirect(reverse('index'))
@@ -212,7 +204,7 @@ class HeroRecentMatchesSet(viewsets.ModelViewSet):
 
 
 class MatchViewSet(viewsets.ModelViewSet):
-    queryset = Match.objects.all().filter(valid_for_model=True).order_by('-match_id')\
+    queryset = Match.objects.all().filter(valid_for_model=True).order_by('-match_id') \
         .prefetch_related('playerinmatch',
                           'playerinmatch__hero',
                           'playerinmatch__item_0',
@@ -228,3 +220,8 @@ class MatchViewSet(viewsets.ModelViewSet):
 class ItemViewSet(viewsets.ModelViewSet):
     queryset = Item.objects.all().filter(item_id__gt=0, recipe=False).order_by('item_id')
     serializer_class = ItemSerializer
+
+
+class MatchDateCountSet(viewsets.ModelViewSet):
+    queryset = Match.get_count_by_date_set()
+    serializer_class = MatchDateCountSerializer

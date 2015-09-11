@@ -182,7 +182,6 @@ class Match(models.Model):
     def get_all_limited():
         return list(Match.objects.all().values('match_id', 'duration', 'radiant_win'))
 
-
     @staticmethod
     def process_match_info(match):
         valid_match = True
@@ -268,13 +267,14 @@ class Match(models.Model):
     def get_count():
         return Match.objects.count()
 
+
     @staticmethod
-    def get_count_by_date():
-        return json.dumps(list(Match.objects.filter(valid_for_model=True)
-                               .extra({'start_time': "date(start_time)"})
-                               .values('start_time')
-                               .annotate(created_count=Count('match_id'))),
-                          cls=DjangoJSONEncoder)
+    def get_count_by_date_set():
+        return Match.objects.filter(valid_for_model=True) \
+            .extra({'date': "date(start_time)"}) \
+            .values('date') \
+            .annotate(count=Count('match_id')) \
+
 
     def get_heroes_for_match(self):
         return Hero.objects.filter(heroinmatch__match__match_id=self.match_id)
