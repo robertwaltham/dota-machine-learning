@@ -63,6 +63,14 @@ class PlayerInMatchSerializer(serializers.ModelSerializer):
 
 class MatchSerializer(serializers.ModelSerializer):
     playerinmatch = PlayerInMatchSerializer(many=True, read_only=True)
+    lobby_type = serializers.SerializerMethodField()
+    game_mode = serializers.SerializerMethodField()
+
+    def get_game_mode(self, match):
+        return match.get_game_mode_string()
+
+    def get_lobby_type(self, match):
+        return match.get_lobby_string()
 
     class Meta:
         model = Match
@@ -71,11 +79,24 @@ class MatchSerializer(serializers.ModelSerializer):
                   'lobby_type', 'human_players', 'game_mode', 'skill')
 
 
-class HeroRecentMatches(serializers.ModelSerializer):
+class HeroRecentMatchesSerializer(serializers.ModelSerializer):
     matches = serializers.SerializerMethodField()
 
     def get_matches(self, hero):
         matches = Match.get_matches_for_hero_id(hero.hero_id)
+        serializer = MatchSerializer(instance=matches, many=True, context=self.context)
+        return serializer.data
+
+    class Meta:
+        model = Hero
+        fields = ('matches',)
+
+
+class ItemRecentMatchSerializer(serializers.ModelSerializer):
+    matches = serializers.SerializerMethodField()
+
+    def get_matches(self, item):
+        matches = Match.get_matches_for_item_id(item_id=item.item_id)
         serializer = MatchSerializer(instance=matches, many=True, context=self.context)
         return serializer.data
 

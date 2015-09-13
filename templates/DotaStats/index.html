@@ -20,13 +20,16 @@
 </head>
 <body>
 
+<div id="container"></div>
+
 <script type="text/jsx">
     $(document).ready(function () {
         render({
             heroList: '{% url 'hero-list' %}',
             matchList: '{% url 'match-list' %}',
             itemList: '{% url 'item-list' %}',
-            heroMatches: '{% url 'herorecentmatches-list' %}'
+            heroMatches: '{% url 'herorecentmatches-list' %}',
+            itemMatches: '{% url 'itemrecentmatches-list' %}'
         });
     });
 </script>

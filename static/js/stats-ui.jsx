@@ -8,7 +8,8 @@ var apiURLs = {
     heroList: '',
     matchList: '',
     itemList: '',
-    heroMatches: ''
+    heroMatches: '',
+    itemMatches: ''
 };
 
 
@@ -51,11 +52,12 @@ function render(urls) {
             <Route name="Items" handler={ItemBox}/>
             <Route name="Hero/:id" handler={HeroDetailBox}/>
             <Route name="Match/:id" handler={MatchDetailBox}/>
+            <Route name="Item/:id" handler={ItemDetailBox}/>
             <DefaultRoute handler={HeroBox}/>
         </Route>
     );
     Router.run(routes, function (Handler) {
-        React.render(<Handler/>, document.body);
+        React.render(<Handler/>, document.getElementById('container'));
     });
 }
 
@@ -117,9 +119,9 @@ var ItemList = React.createClass({
             return (
                 <div className="col-md-1 col-sm-2">
                     <div className="item-image">
-                        <a href={item.url}>
+                        <Link to="Item/:id" params={{id:item.item_id, url:item.url}}>
                             <img src={item.image}/>
-                        </a>
+                        </Link>
                     </div>
                 </div>
             );
@@ -378,29 +380,6 @@ var HeroDetail = React.createClass({
     render: function () {
         var hero = this.props.hero;
         var matches = this.props.matches;
-        var matchNodes = matches.map(function (match) {
-            var matches = match.playerinmatch.map(function (playerinmatch) {
-                var hero = playerinmatch.hero;
-                return (
-                    <MatchHeroImage hero={hero}/>
-                )
-            });
-
-            return (
-
-                <div className="row">
-                    <div className="col-md-2">
-                        <Link to="Match/:id" params={{id:match.match_id, url:match.url}}>
-                            {match.match_id}
-                        </Link>
-                    </div>
-                    <div className="col-md-10">
-                        {matches}
-                    </div>
-                </div>
-            )
-        });
-
 
         return (
             <div className="col-md-12">
@@ -415,7 +394,7 @@ var HeroDetail = React.createClass({
                 <div className="row">
                     <h3>Recent Matches</h3>
                 </div>
-                {matchNodes}
+                <MatchList data={matches}/>
             </div>
         )
     }
@@ -582,9 +561,9 @@ var MatchPlayerItemDetail = React.createClass({
         if (item && item.item_id > 0) {
             return (
                 <div className="match-detail-item">
-                    <a href={item.url}>
+                    <Link to="Item/:id" params={{id:item.item_id, url:item.url}}>
                         <img src={item.small_image}/>
-                    </a>
+                    </Link>
                 </div>
 
             )
@@ -619,3 +598,77 @@ var MatchPlayerHeroDetail = React.createClass({
         )
     }
 });
+
+/**
+ *
+ */
+var ItemDetailBox = React.createClass({
+    getInitialState: function () {
+        return {item: null, matches: []};
+    },
+    componentDidMount: function () {
+        startLoading();
+        // load match
+        var id = this.props.params.id;
+
+        $.ajax({
+            url: apiURLs.itemList + id,
+            dataType: 'json',
+            cache: false,
+            success: function (data) {
+                this.setState({item: data, matches: this.state.matches});
+                finishLoading();
+            }.bind(this),
+            error: function (xhr, status, err) {
+                console.error(this.props.url, status, err.toString());
+                finishLoading();
+            }.bind(this)
+        });
+
+        // load related matches
+        $.ajax({
+            url: apiURLs.itemMatches + id,
+            dataType: 'json',
+            cache: false,
+            success: function (data) {
+                this.setState({item: this.state.item, matches: data.matches});
+            }.bind(this),
+            error: function (xhr, status, err) {
+                console.error(this.props.url, status, err.toString());
+            }.bind(this)
+        });
+    },
+    render: function () {
+        if (this.state.item == null) {
+            return (
+                <div></div>
+            )
+        } else {
+            return (
+                <ItemDetail item={this.state.item} matches={this.state.matches}/>
+            )
+        }
+    }
+});
+
+var ItemDetail = React.createClass({
+    render: function () {
+        var item = this.props.item;
+        var matches = this.props.matches;
+
+        return (
+            <div>
+                <div className="row">
+                    <div className="col-md-2">
+                        <img src={item.image}/>
+                    </div>
+                    <div className="col-md-10">
+                        <h1>{item.localized_name}</h1>
+                    </div>
+                </div>
+                <MatchList data={matches}/>
+            </div>
+        )
+    }
+});
+

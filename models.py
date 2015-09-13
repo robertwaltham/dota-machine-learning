@@ -175,6 +175,29 @@ class Match(models.Model):
                               'playerinmatch__item_5')
 
     @staticmethod
+    def get_matches_for_item_id(item_id):
+        return Match.objects.filter(
+            (Q(playerinmatch__item_0__pk=item_id) |
+             Q(playerinmatch__item_1__pk=item_id) |
+             Q(playerinmatch__item_2__pk=item_id) |
+             Q(playerinmatch__item_3__pk=item_id) |
+             Q(playerinmatch__item_4__pk=item_id) |
+             Q(playerinmatch__item_5__pk=item_id))
+            & Q(valid_for_model=True)
+        )\
+        .distinct()\
+        .order_by('-match_id')[:10]\
+        .prefetch_related('playerinmatch',
+                              'playerinmatch__hero',
+                              'playerinmatch__hero',
+                              'playerinmatch__item_0',
+                              'playerinmatch__item_1',
+                              'playerinmatch__item_2',
+                              'playerinmatch__item_3',
+                              'playerinmatch__item_4',
+                              'playerinmatch__item_5')
+
+    @staticmethod
     def get_all():
         return Match.objects.all()
 
@@ -267,7 +290,6 @@ class Match(models.Model):
     def get_count():
         return Match.objects.count()
 
-
     @staticmethod
     def get_count_by_date_set():
         return Match.objects.filter(valid_for_model=True) \
@@ -355,11 +377,11 @@ class Match(models.Model):
         return self.playerinmatch_set.all().values('hero_id')
 
     def get_lobby_string(self):
-        return lobbies[int(self.lobby_type)]
+        return LOBBIES[int(self.lobby_type)]
 
     def get_game_mode_string(self):
         try:
-            return game_modes[int(self.game_mode)]
+            return GAME_MODES[int(self.game_mode)]
         except KeyError as e:
             return "Unknown"
 

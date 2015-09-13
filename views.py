@@ -15,7 +15,7 @@ from rest_framework import viewsets, pagination
 
 from models import Match, Item, Hero, ScikitModel, MatchPrediction
 from serializers import UserSerializer, GroupSerializer, HeroSerializer, \
-    MatchSerializer, ItemSerializer, HeroRecentMatches, MatchDateCountSerializer
+    MatchSerializer, ItemSerializer, HeroRecentMatchesSerializer, MatchDateCountSerializer, ItemRecentMatchSerializer
 from forms import PredictionForm, ModelTestForm
 from scikit import DotaModel
 from dota import DotaApi
@@ -200,7 +200,7 @@ class HeroViewSet(viewsets.ModelViewSet):
 
 class HeroRecentMatchesSet(viewsets.ModelViewSet):
     queryset = Hero.objects.all().filter(hero_id__gt=0)
-    serializer_class = HeroRecentMatches
+    serializer_class = HeroRecentMatchesSerializer
 
 
 class MatchViewSet(viewsets.ModelViewSet):
@@ -225,3 +225,8 @@ class ItemViewSet(viewsets.ModelViewSet):
 class MatchDateCountSet(viewsets.ModelViewSet):
     queryset = Match.get_count_by_date_set()
     serializer_class = MatchDateCountSerializer
+
+
+class ItemRecentMatchSet(viewsets.ModelViewSet):
+    queryset = Item.objects.all().filter(item_id__gt=0)
+    serializer_class = ItemRecentMatchSerializer

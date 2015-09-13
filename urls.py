@@ -8,7 +8,9 @@ router.register(r'matches', views.MatchViewSet)
 router.register(r'heroes', views.HeroViewSet)
 router.register(r'items', views.ItemViewSet)
 router.register(r'herorecentmatches', views.HeroRecentMatchesSet, base_name='herorecentmatches')
+router.register(r'itemrecentmatches', views.ItemRecentMatchSet, base_name='itemrecentmatches')
 router.register(r'matchcreatedbydate', views.MatchDateCountSet, base_name='matchcreatedbydate')
+
 
 urlpatterns = patterns('',
                        url(r'^$', views.IndexView.as_view(), name='index'),
