@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, division
 import json
 import urllib2
 import datetime
@@ -96,12 +96,21 @@ class Hero(models.Model):
              for hero in Hero.objects.all().filter(hero_id__gt=0)])
 
     def get_winrate(self):
-        player_in_match = PlayerInMatch.objects.filter(hero=self)
-        if player_in_match.count() > 0:
-            radiant = player_in_match.filter(player_slot__lt=128, match__radiant_win=True).count()
-            dire = player_in_match.filter(player_slot__gt=127, match__radiant_win=True).count()
-            return "%0.2f" % (float(radiant + dire) / float(player_in_match.count()))
-        return 0
+        matches = PlayerInMatch.objects.filter(hero=self, match__valid_for_model=True).count()
+        if matches > 0:
+            radiant = PlayerInMatch.objects.filter(match__valid_for_model=True,
+                                                   player_slot__lt=128,
+                                                   match__radiant_win=True,
+                                                   hero=self).count()
+
+            dire = PlayerInMatch.objects.filter(match__valid_for_model=True,
+                                                player_slot__gt=127,
+                                                match__radiant_win=True,
+                                                hero=self).count()
+            winrate = (radiant + dire) / matches
+            return {'radiant': radiant, 'dire': dire, 'matches': matches, 'winrate':winrate}
+
+        return {'radiant': 0, 'dire': 0, 'matches': matches}
 
     def get_image(self):
         if self.hero_id > 0:
@@ -176,26 +185,22 @@ class Match(models.Model):
 
     @staticmethod
     def get_matches_for_item_id(item_id):
-        return Match.objects.filter(
-            (Q(playerinmatch__item_0__pk=item_id) |
-             Q(playerinmatch__item_1__pk=item_id) |
-             Q(playerinmatch__item_2__pk=item_id) |
-             Q(playerinmatch__item_3__pk=item_id) |
-             Q(playerinmatch__item_4__pk=item_id) |
-             Q(playerinmatch__item_5__pk=item_id))
-            & Q(valid_for_model=True)
-        )\
-        .distinct()\
-        .order_by('-match_id')[:10]\
-        .prefetch_related('playerinmatch',
-                              'playerinmatch__hero',
-                              'playerinmatch__hero',
-                              'playerinmatch__item_0',
-                              'playerinmatch__item_1',
-                              'playerinmatch__item_2',
-                              'playerinmatch__item_3',
-                              'playerinmatch__item_4',
-                              'playerinmatch__item_5')
+        item_filter = (Q(playerinmatch__item_0__pk=item_id) | Q(playerinmatch__item_1__pk=item_id) |
+             Q(playerinmatch__item_2__pk=item_id) | Q(playerinmatch__item_3__pk=item_id) |
+             Q(playerinmatch__item_4__pk=item_id) | Q(playerinmatch__item_5__pk=item_id)) & Q(valid_for_model=True)
+
+        objects = Match.objects.filter(item_filter).distinct().order_by('-match_id')[:10].prefetch_related(
+            'playerinmatch',
+            'playerinmatch__hero',
+            'playerinmatch__hero',
+            'playerinmatch__item_0',
+            'playerinmatch__item_1',
+            'playerinmatch__item_2',
+            'playerinmatch__item_3',
+            'playerinmatch__item_4',
+            'playerinmatch__item_5')
+
+        return objects
 
     @staticmethod
     def get_all():

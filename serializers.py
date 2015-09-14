@@ -35,6 +35,7 @@ class ItemSerializer(serializers.ModelSerializer):
 class HeroSerializer(serializers.ModelSerializer):
     hero_image = serializers.SerializerMethodField()
     small_hero_image = serializers.SerializerMethodField()
+    wins = serializers.SerializerMethodField()
 
     def get_hero_image(self, hero):
         return hero.get_image()
@@ -42,9 +43,13 @@ class HeroSerializer(serializers.ModelSerializer):
     def get_small_hero_image(self, hero):
         return hero.get_small_image()
 
+    def get_wins(self, hero):
+        return hero.get_winrate()
+
     class Meta:
         model = Hero
-        fields = ('name', 'localized_name', 'hero_id', 'url', 'primary_attribute', 'hero_image', 'small_hero_image')
+        fields = ('name', 'localized_name', 'hero_id', 'url', 'primary_attribute',
+                  'hero_image', 'small_hero_image', 'wins')
 
 
 class PlayerInMatchSerializer(serializers.ModelSerializer):
