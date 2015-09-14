@@ -298,20 +298,21 @@ var Hero = React.createClass({
 });
 
 
+
 /**
  *
  */
 var NavBar = React.createClass({
     elementClick: function (i) {
-        this.setState({active: this.props.elements[i], user:this.state.user});
+        this.setState({active: this.props.elements[i], user: this.state.user});
     },
     getInitialState: function () {
-        return {active: this.props.elements[0], user:logged_in_user}
+        return {active: this.props.elements[0], user: logged_in_user}
     },
     renderChildren: function () {
         return this.props.elements.map(function (element, i) {
             return (
-                <li><Link to={element}>{element}</Link></li>
+                <NavTab to={element}>{element}</NavTab>
             );
         }, this);
     },
@@ -326,21 +327,21 @@ var NavBar = React.createClass({
             processData: false,
             type: 'POST',
             headers: {
-                'X-CSRFToken':getCookie('csrftoken')
+                'X-CSRFToken': getCookie('csrftoken')
             },
             success: function (data) {
                 finishLoading();
-                this.setState({active: this.state.active, user:data});
+                this.setState({active: this.state.active, user: data});
                 console.log(data);
             }.bind(this),
-            error: function(response, data){
+            error: function (response, data) {
                 finishLoading();
                 var text = '';
-                _.each(response.responseJSON.errors, function(element, index, list){
-                    if(index == '__all__'){
+                _.each(response.responseJSON.errors, function (element, index, list) {
+                    if (index == '__all__') {
                         text += element;
-                    }else{
-                       text += index + ' : ' + element + '\n';
+                    } else {
+                        text += index + ' : ' + element + '\n';
                     }
                 });
                 alert(text);
@@ -374,6 +375,23 @@ var NavBar = React.createClass({
             </nav>
         )
     }
+});
+
+
+var NavTab = React.createClass({
+    contextTypes: {
+        router: React.PropTypes.object.isRequired
+    },
+    render: function () {
+        var router  = this.context.router;
+        var isActive = router.isActive(this.props.to, this.props.params, this.props.query);
+        var className = isActive ? 'active' : '';
+        var link = (
+            <Link {...this.props} />
+        );
+        return (<li className={className}>{link}</li>);
+    }
+
 });
 
 var NavBarUserStatus = React.createClass({
