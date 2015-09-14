@@ -1,8 +1,9 @@
 import json
 
-from django.views.generic import DetailView, View, TemplateView, ListView, FormView
+from django.views.generic import View, TemplateView, ListView, FormView
 from django.views.generic.edit import CreateView
-from django.views.generic.detail import SingleObjectMixin
+from django.views.decorators.csrf import requires_csrf_token
+from django.utils.decorators import method_decorator
 from django.shortcuts import redirect
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import login, logout
@@ -10,6 +11,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User, Group
 from django.core.urlresolvers import reverse
 from django import http
+from django.http import JsonResponse
 
 from rest_framework import viewsets, pagination
 
@@ -49,9 +51,12 @@ class IndexView(TemplateView):
     template_name = 'DotaStats/index.html'
 
     def get_context_data(self, **kwargs):
-        context = super(IndexView, self).get_context_data(**kwargs)
+        self.request.META["CSRF_COOKIE_USED"] = True #force csrf cookie
+        return super(IndexView, self).get_context_data(**kwargs)
 
-        return context
+    @method_decorator(requires_csrf_token)
+    def dispatch(self, *args, **kwargs):
+        return super(IndexView, self).dispatch(*args, **kwargs)
 
 
 class AdminView(TemplateView):
@@ -151,24 +156,31 @@ class LogInView(FormView):
     template_name = 'DotaStats/login.html'
     form_class = AuthenticationForm
 
-    def form_valid(self, form):
+    def post(self, request, *args, **kwargs):
+        print request.body
+        print request.POST
+        print request.POST.get('username')
+        print request.POST.get('password')
+        return super(LogInView, self).post(self, request, *args, **kwargs)
+
+    def form_valid(self, form, **kwargs):
         form.clean()
         user = form.get_user()
         if user is not None:
             login(self.request, user)
-        return super(LogInView, self).form_valid(form)
-
-    def get_success_url(self):
-        next_url = self.request.GET.get('next', None)
-        if next_url is not None:
-            return next_url
+            return JsonResponse({
+                'user': user.username,
+                'errors': False
+            })
         else:
-            return reverse('index')
+            return JsonResponse({
+                'user': '',
+                'errors': True
+            })
 
-    def get_context_data(self, **kwargs):
-        context = super(LogInView, self).get_context_data(**kwargs)
-        context['next'] = self.request.GET.get('next', None)
-        return context
+    def form_invalid(self, form, **kwargs):
+        super(LogInView, self).form_invalid(form)
+        return JsonResponse({'user':False, 'errors':form.errors}, status=400)
 
 
 class LogOutView(View):

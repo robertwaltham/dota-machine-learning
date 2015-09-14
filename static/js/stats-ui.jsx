@@ -9,7 +9,9 @@ var apiURLs = {
     matchList: '',
     itemList: '',
     heroMatches: '',
-    itemMatches: ''
+    itemMatches: '',
+    login: '',
+    logout: ''
 };
 
 
@@ -18,6 +20,8 @@ var startLoading = function () {
 };
 var finishLoading = function () {
 };
+
+var logged_in_user = false;
 
 var spinnerOptions = {
     lines: 13 // The number of lines to draw
@@ -42,7 +46,24 @@ var spinnerOptions = {
     , position: 'absolute' // Element positioning
 };
 
-function render(urls) {
+
+function getCookie(name) {
+    var cookieValue = null;
+    if (document.cookie && document.cookie != '') {
+        var cookies = document.cookie.split(';');
+        for (var i = 0; i < cookies.length; i++) {
+            var cookie = jQuery.trim(cookies[i]);
+            // Does this cookie string begin with the name we want?
+            if (cookie.substring(0, name.length + 1) == (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function render(urls, user) {
     // pass in URLS from django template
     apiURLs = urls;
     var routes = (
@@ -56,6 +77,7 @@ function render(urls) {
             <DefaultRoute handler={HeroBox}/>
         </Route>
     );
+    logged_in_user = user;
     Router.run(routes, function (Handler) {
         React.render(<Handler/>, document.getElementById('container'));
     });
@@ -66,8 +88,8 @@ var DotaStats = React.createClass({
     render: function () {
         return (<div>
             <LoadingSpinner/>
-            <NavBar elements={['Heroes', 'Matches', 'Items']}/>
             <ContentBody ref="body">
+                <NavBar elements={['Heroes', 'Matches', 'Items']}/>
                 <RouteHandler/>
             </ContentBody>
         </div>);
@@ -281,11 +303,10 @@ var Hero = React.createClass({
  */
 var NavBar = React.createClass({
     elementClick: function (i) {
-        this.setState({active: this.props.elements[i]});
-        //this.props.transitions[i](this.state.active);
+        this.setState({active: this.props.elements[i], user:this.state.user});
     },
     getInitialState: function () {
-        return {active: this.props.elements[0]}
+        return {active: this.props.elements[0], user:logged_in_user}
     },
     renderChildren: function () {
         return this.props.elements.map(function (element, i) {
@@ -293,6 +314,39 @@ var NavBar = React.createClass({
                 <li><Link to={element}>{element}</Link></li>
             );
         }, this);
+    },
+    login: function (e) {
+        e.preventDefault();
+        var data = $('#login-form').serialize();
+
+        startLoading();
+        $.ajax({
+            url: apiURLs.login,
+            data: data,
+            processData: false,
+            type: 'POST',
+            headers: {
+                'X-CSRFToken':getCookie('csrftoken')
+            },
+            success: function (data) {
+                finishLoading();
+                this.setState({active: this.state.active, user:data});
+                console.log(data);
+            }.bind(this),
+            error: function(response, data){
+                finishLoading();
+                var text = '';
+                _.each(response.responseJSON.errors, function(element, index, list){
+                    if(index == '__all__'){
+                        text += element;
+                    }else{
+                       text += index + ' : ' + element + '\n';
+                    }
+                });
+                alert(text);
+            }.bind(this)
+
+        });
     },
     render: function () {
         return (
@@ -312,10 +366,50 @@ var NavBar = React.createClass({
                         <ul className="nav navbar-nav">
                             {this.renderChildren()}
                         </ul>
+                        <ul className="nav navbar-nav navbar-right">
+                            <NavBarUserStatus login={this.login.bind(this)} user={this.state.user}/>
+                        </ul>
                     </div>
                 </div>
             </nav>
         )
+    }
+});
+
+var NavBarUserStatus = React.createClass({
+    render: function () {
+        var csrftoken = getCookie('csrftoken');
+
+        if (this.props.user) {
+            return (
+                <li className="dropdown active">
+                    <a href="#" className="dropdown-toggle" data-toggle="dropdown">{this.props.user.user}
+                        <b className="caret"></b></a>
+                    <ul className="dropdown-menu">
+                        <li><a href={apiURLs.logout}>Log Out</a></li>
+                    </ul>
+                </li>
+            )
+        } else {
+            return (
+                <li className="active">
+                    <form id="login-form" method="post" class="navbar-form navbar-left" action={apiURLs.login}>
+                        <div method="post" className="navbar-form navbar-left">
+                            <div className="form-group">
+                                <input type="text"
+                                       className="form-control" placeholder="Username" name="username"/>
+                            </div>
+
+                            <div className="form-group">
+                                <input type="password"
+                                       className="form-control" placeholder="Password" name="password"/>
+                            </div>
+                            <button onClick={this.props.login} className="btn btn-default">Login</button>
+                        </div>
+                    </form>
+                </li>
+            )
+        }
     }
 });
 
