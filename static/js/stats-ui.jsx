@@ -11,7 +11,8 @@ var apiURLs = {
     heroMatches: '',
     itemMatches: '',
     login: '',
-    logout: ''
+    logout: '',
+    matchcreatedbydate: ''
 };
 
 
@@ -74,6 +75,7 @@ function render(urls, user) {
             <Route name="Hero/:id" handler={HeroDetailBox}/>
             <Route name="Match/:id" handler={MatchDetailBox}/>
             <Route name="Item/:id" handler={ItemDetailBox}/>
+            <Route name="Status" handler={StatusBox}/>
             <DefaultRoute handler={HeroBox}/>
         </Route>
     );
@@ -89,7 +91,7 @@ var DotaStats = React.createClass({
         return (<div>
             <LoadingSpinner/>
             <ContentBody ref="body">
-                <NavBar elements={['Heroes', 'Matches', 'Items']}/>
+                <NavBar/>
                 <RouteHandler/>
             </ContentBody>
         </div>);
@@ -298,19 +300,19 @@ var Hero = React.createClass({
 });
 
 
-
 /**
  *
  */
 var NavBar = React.createClass({
     elementClick: function (i) {
-        this.setState({active: this.props.elements[i], user: this.state.user});
+        this.setState({elements: elements, active: this.state.elements[i], user: this.state.user});
     },
     getInitialState: function () {
-        return {active: this.props.elements[0], user: logged_in_user}
+        var elements = logged_in_user ? ['Heroes', 'Matches', 'Items', 'Status'] : ['Heroes', 'Matches', 'Items'];
+        return {elements: elements, active: elements[0], user: logged_in_user}
     },
     renderChildren: function () {
-        return this.props.elements.map(function (element, i) {
+        return this.state.elements.map(function (element, i) {
             return (
                 <NavTab to={element}>{element}</NavTab>
             );
@@ -331,8 +333,11 @@ var NavBar = React.createClass({
             },
             success: function (data) {
                 finishLoading();
-                this.setState({active: this.state.active, user: data});
-                console.log(data);
+                this.setState({
+                    elements: ['Heroes', 'Matches', 'Items', 'Status'],
+                    active: this.state.active,
+                    user: data
+                });
             }.bind(this),
             error: function (response, data) {
                 finishLoading();
@@ -383,7 +388,7 @@ var NavTab = React.createClass({
         router: React.PropTypes.object.isRequired
     },
     render: function () {
-        var router  = this.context.router;
+        var router = this.context.router;
         var isActive = router.isActive(this.props.to, this.props.params, this.props.query);
         var className = isActive ? 'active' : '';
         var link = (
@@ -445,7 +450,7 @@ var HeroDetailBox = React.createClass({
         this.loadHeroDetails(props.params.id);
     },
     loadHeroDetails: function (id) {
-        startLoading();
+        startLoading(2);
         // load hero
         $.ajax({
             url: apiURLs.heroList + id,
@@ -468,9 +473,11 @@ var HeroDetailBox = React.createClass({
             cache: false,
             success: function (data) {
                 this.setState({hero: this.state.hero, matches: data.matches});
+                finishLoading();
             }.bind(this),
             error: function (xhr, status, err) {
                 console.error(this.props.url, status, err.toString());
+                finishLoading();
             }.bind(this)
         });
     },
@@ -526,8 +533,9 @@ var MatchHeroImage = React.createClass({
 
 
 var LoadingSpinner = React.createClass({
-    _startLoading: function () {
-        this.setState({count: this.state.count + 1});
+    _startLoading: function (n) {
+        if (!n) n = 1;
+        this.setState({count: this.state.count + n});
     },
     _finishLoading: function () {
         this.setState({count: this.state.count - 1});
@@ -719,7 +727,7 @@ var ItemDetailBox = React.createClass({
         return {item: null, matches: []};
     },
     componentDidMount: function () {
-        startLoading();
+        startLoading(2);
         // load match
         var id = this.props.params.id;
 
@@ -744,9 +752,11 @@ var ItemDetailBox = React.createClass({
             cache: false,
             success: function (data) {
                 this.setState({item: this.state.item, matches: data.matches});
+                finishLoading();
             }.bind(this),
             error: function (xhr, status, err) {
                 console.error(this.props.url, status, err.toString());
+                finishLoading();
             }.bind(this)
         });
     },
@@ -781,6 +791,67 @@ var ItemDetail = React.createClass({
                 <MatchList data={matches}/>
             </div>
         )
+    }
+});
+
+var StatusBox = React.createClass({
+    getInitialState: function () {
+        return {days: []}
+    },
+    componentDidMount: function () {
+        startLoading(1);
+        // load matches
+        $.ajax({
+            url: apiURLs.matchcreatedbydate,
+            dataType: 'json',
+            cache: false,
+            success: function (data) {
+                this.setState({days: data});
+                finishLoading();
+            }.bind(this),
+            error: function (xhr, status, err) {
+                console.error(this.props.url, status, err.toString());
+                finishLoading();
+            }.bind(this)
+        });
+    },
+    render: function () {
+        if (logged_in_user) {
+            var rows = this.state.days.map(function (day) {
+                return (
+                    <div className="row">
+                        <div className="col-md-6">
+                            {day.date}
+                        </div>
+                        <div className="col-md-6">
+                            {day.count}
+                        </div>
+                    </div>
+                )
+            });
+            return (
+                <div>
+                    <div className="row">
+                        <div className="col-md-12">
+                            <h1> Status and Administration </h1>
+                        </div>
+                    </div>
+                    <div className="row">
+                        <div className="col-md-12">
+                            <h3> Matches By Date </h3>
+                        </div>
+                    </div>
+                    <div className="row">
+                        <div className="col-md-12">
+                            {rows}
+                        </div>
+                    </div>
+                </div>
+            )
+        } else {
+            return (<div></div>);
+        }
+
     }
 });
 
