@@ -10,6 +10,7 @@ router.register(r'items', views.ItemViewSet)
 router.register(r'herorecentmatches', views.HeroRecentMatchesSet, base_name='herorecentmatches')
 router.register(r'itemrecentmatches', views.ItemRecentMatchSet, base_name='itemrecentmatches')
 router.register(r'matchcreatedbydate', views.MatchDateCountSet, base_name='matchcreatedbydate')
+router.register(r'taskmeta', views.TaskMetaSet, base_name='taskmeta')
 
 
 urlpatterns = patterns('',

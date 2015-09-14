@@ -2,6 +2,7 @@ from django.contrib.auth.models import User, Group
 from rest_framework import serializers
 
 from models import Hero, Match, PlayerInMatch, Item
+from djcelery.models import TaskMeta
 
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
@@ -108,3 +109,9 @@ class ItemRecentMatchSerializer(serializers.ModelSerializer):
 class MatchDateCountSerializer(serializers.Serializer):
     count = serializers.CharField(max_length=200)
     date = serializers.CharField(max_length=200)
+
+
+class TaskMetaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TaskMeta
+
