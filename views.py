@@ -1,7 +1,5 @@
-import json
 
 from django.views.generic import View, TemplateView, ListView, FormView
-from django.views.generic.edit import CreateView
 from django.views.decorators.csrf import requires_csrf_token
 from django.utils.decorators import method_decorator
 from django.shortcuts import redirect
@@ -15,12 +13,9 @@ from django.http import JsonResponse
 
 from rest_framework import viewsets, pagination
 
-from models import Match, Item, Hero, ScikitModel, MatchPrediction
+from models import Match, Item, Hero
 from serializers import UserSerializer, GroupSerializer, HeroSerializer, \
     MatchSerializer, ItemSerializer, HeroRecentMatchesSerializer, MatchDateCountSerializer, ItemRecentMatchSerializer
-from forms import PredictionForm, ModelTestForm
-from scikit import DotaModel
-from dota import DotaApi
 
 
 class LoginRequiredMixin(object):
@@ -59,97 +54,12 @@ class IndexView(TemplateView):
         return super(IndexView, self).dispatch(*args, **kwargs)
 
 
-class AdminView(TemplateView):
-    template_name = 'DotaStats/admin.html'
-
-    def get_context_data(self, **kwargs):
-        context = super(AdminView, self).get_context_data(**kwargs)
-        context['count'] = Match.get_all().filter(valid_for_model=True).count()
-        context['heroes'] = Hero.get_serialized_hero_list()
-        return context
-
-
-class AjaxLoadMatchesFromAPI(LoginRequiredMixin, JSONView):
-    def get_context_data(self, **kwargs):
-        return super(AjaxLoadMatchesFromAPI, self).get_context_data(
-            status=DotaApi.load_matches_from_api(), **kwargs)
-
-
-class AjaxLoadStaticDataView(LoginRequiredMixin, JSONView):
-    def get_context_data(self, **kwargs):
-        return super(AjaxLoadStaticDataView, self).get_context_data(heroes=DotaApi.load_heroes_from_api(),
-                                                                    items=DotaApi.load_items_from_api(),
-                                                                    attributes=DotaApi.load_hero_attribute_from_api(),
-                                                                    **kwargs)
-
-
-class BuildDataView(View):
-    @staticmethod
-    def get(request):
-        model = ScikitModel.create_model()
-        return http.HttpResponse(json.dumps({'task_id': model.task_id}))
-
-
-class BuildAndTestView(TemplateView):
-    template_name = 'DotaStats/build.html'
-
-    def get_context_data(self, **kwargs):
-        context = super(BuildAndTestView, self).get_context_data(**kwargs)
-        form = ModelTestForm(self.request.GET)
-        context['form'] = form
-        DotaModel.mapreduce()
-
-        if form.is_valid():
-            # data = form.cleaned_data
-            # context['count'], context['accuracy'], context['radiant_win']\
-            #     = DotaModel.build(data['n_matches'], data['n_tests'], data['min_duration'], data['algorithm'])
-            context['valid'] = True
-        else:
-            context['valid'] = False
-        return context
-
-
 class HeroListView(ListView):
     template_name = 'DotaStats/herolist.html'
     context_object_name = 'heroes'
 
     def get_queryset(self):
         return Hero.objects.filter(hero_id__gt=0).order_by('primary_attribute')
-
-
-class ItemListView(ListView):
-    template_name = 'DotaStats/itemlist.html'
-    context_object_name = 'items'
-    model = Item
-
-    def get_queryset(self):
-        return super(ItemListView, self).get_queryset().filter(item_id__gt=0)
-
-
-class MatchListView(ListView):
-    template_name = 'DotaStats/matchlist.html'
-    context_object_name = 'matches'
-    model = Match
-    paginate_by = 50
-
-    def get_queryset(self):
-        return super(MatchListView, self).get_queryset().filter(valid_for_model=True).order_by('-match_id') \
-            .prefetch_related('playerinmatch', 'playerinmatch__hero')
-
-
-class CreatePredictionView(CreateView):
-    template_name = 'DotaStats/predict.html'
-    form_class = PredictionForm
-    context_object_name = 'form'
-
-    def get_success_url(self):
-        self.object.get_prediction()
-        return reverse('index')
-
-    def get_context_data(self, **kwargs):
-        context = super(CreatePredictionView, self).get_context_data(**kwargs)
-        context['predictions'] = MatchPrediction.objects.all()
-        return context
 
 
 class LogInView(FormView):

@@ -80,29 +80,6 @@ class Hero(models.Model):
     PRIMARY_ATTRIBUTE = ((0, 'STR'), (1, 'AGI'), (2, 'INT'))
     primary_attribute = models.IntegerField(choices=PRIMARY_ATTRIBUTE, default=0)
 
-    @staticmethod
-    def get_heroes_by_attribute():
-        return [list(g) for k, g in groupby(Hero.objects.all().order_by('primary_attribute'),
-                                            lambda x: x.primary_attribute)]
-
-    @staticmethod
-    def get_serialized_hero_list():
-        return json.dumps(
-            [{'name': hero.localized_name,
-              'hero_id': hero.hero_id,
-              'primary_attribute': hero.primary_attribute,
-              'image': hero.get_small_image(),
-              'link': reverse('hero-detail', args=(hero.hero_id,))}
-             for hero in Hero.objects.all().filter(hero_id__gt=0)])
-
-    def get_winrate(self):
-        player_in_match = PlayerInMatch.objects.filter(hero=self)
-        if player_in_match.count() > 0:
-            radiant = player_in_match.filter(player_slot__lt=128, match__radiant_win=True).count()
-            dire = player_in_match.filter(player_slot__gt=127, match__radiant_win=True).count()
-            return "%0.2f" % (float(radiant + dire) / float(player_in_match.count()))
-        return 0
-
     def get_image(self):
         if self.hero_id > 0:
             return static('image/heroes/' + self.name[14:] + '.png')
@@ -197,13 +174,6 @@ class Match(models.Model):
                               'playerinmatch__item_4',
                               'playerinmatch__item_5')
 
-    @staticmethod
-    def get_all():
-        return Match.objects.all()
-
-    @staticmethod
-    def get_all_limited():
-        return list(Match.objects.all().values('match_id', 'duration', 'radiant_win'))
 
     @staticmethod
     def process_match_info(match):
@@ -227,7 +197,7 @@ class Match(models.Model):
             duration=int(match['duration']),
             has_been_processed=True)
 
-        if not new_match.game_mode in valid_game_modes:
+        if new_match.game_mode not in valid_game_modes:
             valid_match = False
 
         for player_in_game in match['players']:
@@ -296,10 +266,6 @@ class Match(models.Model):
             .extra({'date': "date(start_time)"}) \
             .values('date') \
             .annotate(count=Count('match_id')) \
-
-
-    def get_heroes_for_match(self):
-        return Hero.objects.filter(heroinmatch__match__match_id=self.match_id)
 
     def __unicode__(self):
         return str(self.match_id)
@@ -373,9 +339,6 @@ class Match(models.Model):
         result.sort(key=lambda x: -1 * x['count'])
         return result
 
-    def get_hero_ids_in_match(self):
-        return self.playerinmatch_set.all().values('hero_id')
-
     def get_lobby_string(self):
         return LOBBIES[int(self.lobby_type)]
 
@@ -417,10 +380,6 @@ class PlayerInMatch(models.Model):
 
     def __unicode__(self):
         return 'Match: {0}, Hero: {1}, Team: {2}'.format(self.match_id, self.hero, self.team())
-
-    @staticmethod
-    def get_player_in_match_for_hero_id(hero):
-        return PlayerInMatch.objects.filter(hero=hero)
 
     def team(self):
         return 'Radiant' if self.player_slot <= 127 else 'Dire'
