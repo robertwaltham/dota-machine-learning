@@ -257,15 +257,11 @@ class Match(models.Model):
                 'radiant': Match.objects.filter(has_been_processed=True, radiant_win=True).count()}
 
     @staticmethod
-    def get_count():
-        return Match.objects.count()
-
-    @staticmethod
     def get_count_by_date_set():
         return Match.objects.filter(valid_for_model=True) \
             .extra({'date': "date(start_time)"}) \
             .values('date') \
-            .annotate(count=Count('match_id')) \
+            .annotate(count=Count('match_id'))
 
     def __unicode__(self):
         return str(self.match_id)

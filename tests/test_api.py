@@ -9,39 +9,14 @@ from django.test import TestCase, TransactionTestCase
 from DotaStats.dota import DotaApi
 from DotaStats.models import Hero, Item, Player, Match
 
+from DotaStats.tests.test_models import HeroFactory, ItemFactory, PlayerFactory
+
 # run celery task synchronous
 from django.conf import settings
 
 settings.CELERY_ALWAYS_EAGER = True
 
 fake = FakerFactory.create()
-
-
-class HeroFactory(factory.DjangoModelFactory):
-    name = factory.LazyAttribute(lambda o: fake.name().lower())
-    localized_name = factory.LazyAttribute(lambda o: fake.name())
-    hero_id = factory.Sequence(lambda n: n)
-    primary_attribute = randint(0, 3)
-
-    class Meta:
-        model = Hero
-
-
-class ItemFactory(factory.DjangoModelFactory):
-    name = factory.LazyAttribute(lambda o: fake.name().lower())
-    localized_name = factory.LazyAttribute(lambda o: fake.name())
-    item_id = factory.Sequence(lambda n: n)
-
-    class Meta:
-        model = Item
-
-
-class PlayerFactory(factory.DjangoModelFactory):
-    name = factory.LazyAttribute(lambda o: fake.name().lower())
-    account_id = factory.Sequence(lambda n: n)
-
-    class Meta:
-        model = Player
 
 
 class APITestAssetLoading(TestCase):
@@ -131,6 +106,9 @@ class APITestAssetLoading(TestCase):
 class APITestMatchLoading(TransactionTestCase):
     def setUp(self):
         super(APITestMatchLoading, self).setUp()
+        PlayerFactory.reset_sequence()
+        HeroFactory.reset_sequence()
+        ItemFactory.reset_sequence()
         self.items = [ItemFactory() for i in range(0, 10)]
         self.players = [PlayerFactory() for i in range(0, 10)]
         self.heroes = [HeroFactory() for i in range(0, 10)]

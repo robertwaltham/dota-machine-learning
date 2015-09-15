@@ -14,10 +14,6 @@ router.register(r'matchcreatedbydate', views.MatchDateCountSet, base_name='match
 
 urlpatterns = patterns('',
                        url(r'^$', views.IndexView.as_view(), name='index'),
-                       url(r'^admin/$', views.AdminView.as_view(), name='admin'),
-                       url(r'^load-matches/$', views.AjaxLoadMatchesFromAPI.as_view(), name='load-matches'),
-                       url(r'^load-static-data/$', views.AjaxLoadStaticDataView.as_view(), name='static-data'),
-                       url(r'^build/', views.BuildDataView.as_view(), name='build-data'),
                        url(r'^login/', views.LogInView.as_view(), name='login'),
                        url(r'^logout/', views.LogOutView.as_view(), name='logout'),
                        url(r'^api/', include(router.urls), name='api'),
