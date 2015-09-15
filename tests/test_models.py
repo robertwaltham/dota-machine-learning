@@ -1,10 +1,9 @@
-import mock, time, datetime
+import time, datetime
 from random import randint, getrandbits
 
-from requests.models import Response
 import factory
 from faker import Factory as FakerFactory
-from django.test import TestCase, TransactionTestCase
+from django.test import TestCase
 
 from DotaStats.models import Hero, Item, Player, Match, PlayerInMatch
 

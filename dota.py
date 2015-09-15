@@ -1,6 +1,4 @@
-import json
 import requests
-import urllib2
 
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist

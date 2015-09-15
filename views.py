@@ -1,4 +1,3 @@
-
 from django.views.generic import View, TemplateView, ListView, FormView
 from django.views.decorators.csrf import requires_csrf_token
 from django.utils.decorators import method_decorator
@@ -19,7 +18,6 @@ from models import Match, Item, Hero
 from serializers import UserSerializer, GroupSerializer, HeroSerializer, \
     MatchSerializer, ItemSerializer, HeroRecentMatchesSerializer, MatchDateCountSerializer, ItemRecentMatchSerializer, \
     TaskMetaSerializer
-
 
 
 class LoginRequiredMixin(object):
@@ -50,7 +48,7 @@ class IndexView(TemplateView):
     template_name = 'DotaStats/index.html'
 
     def get_context_data(self, **kwargs):
-        self.request.META["CSRF_COOKIE_USED"] = True #force csrf cookie
+        self.request.META["CSRF_COOKIE_USED"] = True  # force csrf cookie
         return super(IndexView, self).get_context_data(**kwargs)
 
     @method_decorator(requires_csrf_token)
@@ -71,10 +69,6 @@ class LogInView(FormView):
     form_class = AuthenticationForm
 
     def post(self, request, *args, **kwargs):
-        print request.body
-        print request.POST
-        print request.POST.get('username')
-        print request.POST.get('password')
         return super(LogInView, self).post(self, request, *args, **kwargs)
 
     def form_valid(self, form, **kwargs):
@@ -94,7 +88,7 @@ class LogInView(FormView):
 
     def form_invalid(self, form, **kwargs):
         super(LogInView, self).form_invalid(form)
-        return JsonResponse({'user':False, 'errors':form.errors}, status=400)
+        return JsonResponse({'user': False, 'errors': form.errors}, status=400)
 
 
 class LogOutView(View):
@@ -109,24 +103,24 @@ class StandardResultsSetPagination(pagination.PageNumberPagination):
     max_page_size = 25
 
 
-class UserViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.all().order_by('-date_joined')
-    serializer_class = UserSerializer
-
-
-class GroupViewSet(viewsets.ModelViewSet):
-    queryset = Group.objects.all()
-    serializer_class = GroupSerializer
-
-
 class HeroViewSet(viewsets.ModelViewSet):
     queryset = Hero.objects.all().filter(hero_id__gt=0)
     serializer_class = HeroSerializer
 
 
+class ItemViewSet(viewsets.ModelViewSet):
+    queryset = Item.objects.all().filter(item_id__gt=0, recipe=False).order_by('item_id')
+    serializer_class = ItemSerializer
+
+
 class HeroRecentMatchesSet(viewsets.ModelViewSet):
     queryset = Hero.objects.all().filter(hero_id__gt=0)
     serializer_class = HeroRecentMatchesSerializer
+
+
+class ItemRecentMatchSet(viewsets.ModelViewSet):
+    queryset = Item.objects.all().filter(item_id__gt=0)
+    serializer_class = ItemRecentMatchSerializer
 
 
 class MatchViewSet(viewsets.ModelViewSet):
@@ -143,19 +137,9 @@ class MatchViewSet(viewsets.ModelViewSet):
     pagination_class = StandardResultsSetPagination
 
 
-class ItemViewSet(viewsets.ModelViewSet):
-    queryset = Item.objects.all().filter(item_id__gt=0, recipe=False).order_by('item_id')
-    serializer_class = ItemSerializer
-
-
 class MatchDateCountSet(viewsets.ModelViewSet):
     queryset = Match.get_count_by_date_set()
     serializer_class = MatchDateCountSerializer
-
-
-class ItemRecentMatchSet(viewsets.ModelViewSet):
-    queryset = Item.objects.all().filter(item_id__gt=0)
-    serializer_class = ItemRecentMatchSerializer
 
 
 class TaskMetaSet(viewsets.ModelViewSet):
@@ -167,4 +151,3 @@ class TaskMetaSet(viewsets.ModelViewSet):
             return TaskMeta.objects.all().order_by('-id').filter(status=status)[:100]
         else:
             return TaskMeta.objects.all().order_by('-id')[:100]
-
