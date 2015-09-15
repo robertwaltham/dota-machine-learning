@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, division
 import json
 import urllib2
 import datetime
@@ -153,26 +153,22 @@ class Match(models.Model):
 
     @staticmethod
     def get_matches_for_item_id(item_id):
-        return Match.objects.filter(
-            (Q(playerinmatch__item_0__pk=item_id) |
-             Q(playerinmatch__item_1__pk=item_id) |
-             Q(playerinmatch__item_2__pk=item_id) |
-             Q(playerinmatch__item_3__pk=item_id) |
-             Q(playerinmatch__item_4__pk=item_id) |
-             Q(playerinmatch__item_5__pk=item_id))
-            & Q(valid_for_model=True)
-        )\
-        .distinct()\
-        .order_by('-match_id')[:10]\
-        .prefetch_related('playerinmatch',
-                              'playerinmatch__hero',
-                              'playerinmatch__hero',
-                              'playerinmatch__item_0',
-                              'playerinmatch__item_1',
-                              'playerinmatch__item_2',
-                              'playerinmatch__item_3',
-                              'playerinmatch__item_4',
-                              'playerinmatch__item_5')
+        item_filter = (Q(playerinmatch__item_0__pk=item_id) | Q(playerinmatch__item_1__pk=item_id) |
+             Q(playerinmatch__item_2__pk=item_id) | Q(playerinmatch__item_3__pk=item_id) |
+             Q(playerinmatch__item_4__pk=item_id) | Q(playerinmatch__item_5__pk=item_id)) & Q(valid_for_model=True)
+
+        objects = Match.objects.filter(item_filter).distinct().order_by('-match_id')[:10].prefetch_related(
+            'playerinmatch',
+            'playerinmatch__hero',
+            'playerinmatch__hero',
+            'playerinmatch__item_0',
+            'playerinmatch__item_1',
+            'playerinmatch__item_2',
+            'playerinmatch__item_3',
+            'playerinmatch__item_4',
+            'playerinmatch__item_5')
+
+        return objects
 
 
     @staticmethod
@@ -250,11 +246,6 @@ class Match(models.Model):
         new_match.valid_for_model = valid_match
         new_match.save()
         return valid_match
-
-    @staticmethod
-    def get_winrate():
-        return {'dire': Match.objects.filter(has_been_processed=True, radiant_win=False).count(),
-                'radiant': Match.objects.filter(has_been_processed=True, radiant_win=True).count()}
 
     @staticmethod
     def get_count_by_date_set():

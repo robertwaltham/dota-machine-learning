@@ -257,4 +257,4 @@ class TestMatchModel(TestCase):
         valid = Match.process_match_info(match)
         self.assertTrue(valid)
         self.assertIsInstance(Match.objects.get(match_id=11), Match)
-        
+

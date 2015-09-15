@@ -12,10 +12,14 @@ from django import http
 from django.http import JsonResponse
 
 from rest_framework import viewsets, pagination
+from djcelery.models import TaskMeta
+from celery import states
 
 from models import Match, Item, Hero
 from serializers import UserSerializer, GroupSerializer, HeroSerializer, \
-    MatchSerializer, ItemSerializer, HeroRecentMatchesSerializer, MatchDateCountSerializer, ItemRecentMatchSerializer
+    MatchSerializer, ItemSerializer, HeroRecentMatchesSerializer, MatchDateCountSerializer, ItemRecentMatchSerializer, \
+    TaskMetaSerializer
+
 
 
 class LoginRequiredMixin(object):
@@ -152,3 +156,15 @@ class MatchDateCountSet(viewsets.ModelViewSet):
 class ItemRecentMatchSet(viewsets.ModelViewSet):
     queryset = Item.objects.all().filter(item_id__gt=0)
     serializer_class = ItemRecentMatchSerializer
+
+
+class TaskMetaSet(viewsets.ModelViewSet):
+    serializer_class = TaskMetaSerializer
+
+    def get_queryset(self):
+        status = self.request.query_params.get('status', None)
+        if status is not None and status in states.ALL_STATES:
+            return TaskMeta.objects.all().order_by('-id').filter(status=status)[:100]
+        else:
+            return TaskMeta.objects.all().order_by('-id')[:100]
+
