@@ -28,4 +28,10 @@ def build_and_test(starting_match_id, test_match_ids):
 def process_match(match):
     return Match.process_match_info(match)
 
+@app.task
+def load_static():
+    DotaApi.load_heroes_from_api()
+    DotaApi.load_items_from_api()
+    DotaApi.load_hero_attribute_from_api()
+
 
