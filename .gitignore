@@ -57,3 +57,5 @@ target/
 
 # bower
 static/bower
+
+node_modules/

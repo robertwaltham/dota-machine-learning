@@ -8,40 +8,33 @@
     <!-- Bootstrap -->
     <link href="{% static "bower/bootstrap/dist/css/bootstrap.min.css" %}" rel="stylesheet">
     <script src="{% static "bower/jquery/dist/jquery.min.js" %}"></script>
-    <script src="{% static "bower/bootstrap/dist/js/bootstrap.min.js" %}"></script>
-    <script src="{% static "bower/underscore/underscore-min.js" %}"></script>
-    <script src="{% static "bower/react/react-with-addons.min.js" %}"></script>
-    <script src="{% static "bower/react/JSXTransformer.js" %}"></script>
-    <script src="{% static "js/spin.min.js" %}"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-router/0.13.3/ReactRouter.min.js"></script>
-    <script type="text/jsx" src="{% static "js/stats-ui.jsx" %}"></script>
+
     <link href="{% static "css/style.css" %}" rel="stylesheet">
 
 </head>
 <body>
 
 <div id="container"></div>
+<script src="{% static "js/stats-ui.jsx" %}"></script>
 
-<script type="text/jsx">
-    $(document).ready(function () {
-        var user_name = '{{user.username }}';
-        var user = false;
-        if (user_name) {
-            user = {user: user_name};
-        }
-        render({
-            heroList: '{% url 'hero-list' %}',
-            matchList: '{% url 'match-list' %}',
-            itemList: '{% url 'item-list' %}',
-            heroMatches: '{% url 'herorecentmatches-list' %}',
-            itemMatches: '{% url 'itemrecentmatches-list' %}',
-            login: '{% url 'login' %}',
-            logout: '{% url 'logout' %}',
-            matchcreatedbydate: '{% url 'matchcreatedbydate-list' %}'
-        },
-        user
-        );
-    });
+<script>
+    var user_name = '{{user.username }}';
+    var user = false;
+    if (user_name) {
+        user = {user: user_name};
+    }
+    window.renderDotaStats({
+                heroList: '{% url 'hero-list' %}',
+                matchList: '{% url 'match-list' %}',
+                itemList: '{% url 'item-list' %}',
+                heroMatches: '{% url 'herorecentmatches-list' %}',
+                itemMatches: '{% url 'itemrecentmatches-list' %}',
+                login: '{% url 'login' %}',
+                logout: '{% url 'logout' %}',
+                matchcreatedbydate: '{% url 'matchcreatedbydate-list' %}'
+            },
+            user
+    );
 </script>
 
 
