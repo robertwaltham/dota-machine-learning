@@ -5,7 +5,6 @@ from django.shortcuts import redirect
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.models import User, Group
 from django.core.urlresolvers import reverse
 from django import http
 from django.http import JsonResponse
@@ -14,6 +13,7 @@ from rest_framework import viewsets, pagination
 from djcelery.models import TaskMeta
 from celery import states
 
+from django.conf import settings # import the settings file
 from models import Match, Item, Hero
 from serializers import UserSerializer, GroupSerializer, HeroSerializer, \
     MatchSerializer, ItemSerializer, HeroRecentMatchesSerializer, MatchDateCountSerializer, ItemRecentMatchSerializer, \
@@ -48,8 +48,14 @@ class IndexView(TemplateView):
     template_name = 'DotaStats/index.html'
 
     def get_context_data(self, **kwargs):
+
         self.request.META["CSRF_COOKIE_USED"] = True  # force csrf cookie
-        return super(IndexView, self).get_context_data(**kwargs)
+        context = super(IndexView, self).get_context_data(**kwargs)
+        try:
+            context['GA_KEY'] = settings.GA_KEY
+        except AttributeError:
+            pass
+        return context
 
     @method_decorator(requires_csrf_token)
     def dispatch(self, *args, **kwargs):
