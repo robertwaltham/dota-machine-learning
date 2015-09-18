@@ -23,7 +23,8 @@ var MatchDetailBox = require('./matchDetail.jsx');
 
 var NavBar = require('./navBar.jsx');
 
-
+var gitHubLink = "https://github.com/robertwaltham/dota-machine-learning";
+var profileLink = "http://rob.blockoftext.com";
 
 var spinnerOptions = {
     lines: 13 // The number of lines to draw
@@ -54,16 +55,16 @@ function render(urls, user) {
     window.apiURLs = urls;
     window.logged_in_user = user;
     React.render(<Router>
-                    <Route name="DotaStats" path="/" component={DotaStats}>
-                        <Route path="Heroes" component={HeroBox}/>
-                        <Route path="Matches" component={MatchBox}/>
-                        <Route path="Items" component={ItemBox}/>
-                        <Route path="Hero/:id" component={HeroDetailBox}/>
-                        <Route path="Match/:id" component={MatchDetailBox}/>
-                        <Route path="Item/:id" component={ItemDetailBox}/>
-                        <Route path="Status" component={StatusBox}/>
-                    </Route>
-                </Router>, document.getElementById('container'));
+        <Route name="DotaStats" path="/" component={DotaStats}>
+            <Route path="Heroes" component={HeroBox}/>
+            <Route path="Matches" component={MatchBox}/>
+            <Route path="Items" component={ItemBox}/>
+            <Route path="Hero/:id" component={HeroDetailBox}/>
+            <Route path="Match/:id" component={MatchDetailBox}/>
+            <Route path="Item/:id" component={ItemDetailBox}/>
+            <Route path="Status" component={StatusBox}/>
+        </Route>
+    </Router>, document.getElementById('container'));
 }
 
 window.renderDotaStats = render;
@@ -77,6 +78,7 @@ var DotaStats = React.createClass({
                 <NavBar/>
                 {this.props.children || <HeroBox/>}
             </ContentBody>
+            <Footer/>
         </div>);
     }
 });
@@ -108,6 +110,37 @@ var LoadingSpinner = React.createClass({
         var hidden = this.state.count > 0 ? {} : {display: 'none'};
         return (
             <div style={hidden} className="loading-spinner-wrap" ref="spinAnchor"></div>
+        )
+    }
+});
+
+
+var Footer = React.createClass({
+    render: function () {
+        return (
+            <footer className="footer">
+                <div className="container">
+                    <div className="row">
+                        <div className="col-md-6">
+                            <div className="footer-copy">
+                                © 2015 <a href={profileLink}>Robert Waltham</a>
+                            </div>
+                        </div>
+                        <div className="col-md-6">
+                            <div className="footer-copy right">
+                                <a href={gitHubLink}> Github </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="row">
+                        <div className="col-md-12">
+                            <div className="footer-copy">
+                                 Dota 2 is a registered trademark of Valve Corporation.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </footer>
         )
     }
 });

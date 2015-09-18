@@ -41,3 +41,16 @@
 
 .match-detail-item.empty {
 }
+
+.footer-copy{
+    font-size: 12px;
+    margin: 5px 0;
+}
+
+.footer-copy.right{
+    text-align: right;
+}
+
+.footer{
+    margin:20px;
+}

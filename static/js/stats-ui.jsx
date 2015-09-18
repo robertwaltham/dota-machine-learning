@@ -752,7 +752,8 @@ var MatchDetailBox = require('./matchDetail.jsx');
 
 var NavBar = require('./navBar.jsx');
 
-
+var gitHubLink = "https://github.com/robertwaltham/dota-machine-learning";
+var profileLink = "http://rob.blockoftext.com";
 
 var spinnerOptions = {
     lines: 13 // The number of lines to draw
@@ -783,16 +784,16 @@ function render(urls, user) {
     window.apiURLs = urls;
     window.logged_in_user = user;
     React.render(React.createElement(Router, null, 
-                    React.createElement(Route, {name: "DotaStats", path: "/", component: DotaStats}, 
-                        React.createElement(Route, {path: "Heroes", component: HeroBox}), 
-                        React.createElement(Route, {path: "Matches", component: MatchBox}), 
-                        React.createElement(Route, {path: "Items", component: ItemBox}), 
-                        React.createElement(Route, {path: "Hero/:id", component: HeroDetailBox}), 
-                        React.createElement(Route, {path: "Match/:id", component: MatchDetailBox}), 
-                        React.createElement(Route, {path: "Item/:id", component: ItemDetailBox}), 
-                        React.createElement(Route, {path: "Status", component: StatusBox})
-                    )
-                ), document.getElementById('container'));
+        React.createElement(Route, {name: "DotaStats", path: "/", component: DotaStats}, 
+            React.createElement(Route, {path: "Heroes", component: HeroBox}), 
+            React.createElement(Route, {path: "Matches", component: MatchBox}), 
+            React.createElement(Route, {path: "Items", component: ItemBox}), 
+            React.createElement(Route, {path: "Hero/:id", component: HeroDetailBox}), 
+            React.createElement(Route, {path: "Match/:id", component: MatchDetailBox}), 
+            React.createElement(Route, {path: "Item/:id", component: ItemDetailBox}), 
+            React.createElement(Route, {path: "Status", component: StatusBox})
+        )
+    ), document.getElementById('container'));
 }
 
 window.renderDotaStats = render;
@@ -805,7 +806,8 @@ var DotaStats = React.createClass({displayName: "DotaStats",
             React.createElement(ContentBody, {ref: "body"}, 
                 React.createElement(NavBar, null), 
                 this.props.children || React.createElement(HeroBox, null)
-            )
+            ), 
+            React.createElement(Footer, null)
         ));
     }
 });
@@ -837,6 +839,37 @@ var LoadingSpinner = React.createClass({displayName: "LoadingSpinner",
         var hidden = this.state.count > 0 ? {} : {display: 'none'};
         return (
             React.createElement("div", {style: hidden, className: "loading-spinner-wrap", ref: "spinAnchor"})
+        )
+    }
+});
+
+
+var Footer = React.createClass({displayName: "Footer",
+    render: function () {
+        return (
+            React.createElement("footer", {className: "footer"}, 
+                React.createElement("div", {className: "container"}, 
+                    React.createElement("div", {className: "row"}, 
+                        React.createElement("div", {className: "col-md-6"}, 
+                            React.createElement("div", {className: "footer-copy"}, 
+                                "© 2015 ", React.createElement("a", {href: profileLink}, "Robert Waltham")
+                            )
+                        ), 
+                        React.createElement("div", {className: "col-md-6"}, 
+                            React.createElement("div", {className: "footer-copy right"}, 
+                                React.createElement("a", {href: gitHubLink}, " Github ")
+                            )
+                        )
+                    ), 
+                    React.createElement("div", {className: "row"}, 
+                        React.createElement("div", {className: "col-md-12"}, 
+                            React.createElement("div", {className: "footer-copy"}, 
+                                 "Dota 2 is a registered trademark of Valve Corporation."
+                            )
+                        )
+                    )
+                )
+            )
         )
     }
 });
