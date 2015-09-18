@@ -388,6 +388,7 @@ var Router = ReactRouter.Router;
 var Route = ReactRouter.Route;
 var Link = ReactRouter.Link;
 var History = ReactRouter.History;
+var _ = require('underscore');
 
 module.exports = React.createClass({displayName: "exports",
     getInitialState: function () {
@@ -548,7 +549,7 @@ var MatchPlayerHeroDetail = React.createClass({displayName: "MatchPlayerHeroDeta
     }
 });
 
-},{"react-router":30}],8:[function(require,module,exports){
+},{"react-router":30,"underscore":211}],8:[function(require,module,exports){
 var ReactRouter = require('react-router');
 var Router = ReactRouter.Router;
 var Route = ReactRouter.Route;
