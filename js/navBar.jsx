@@ -9,7 +9,7 @@ module.exports = React.createClass({
         this.setState({elements: elements, active: this.state.elements[i], user: this.state.user});
     },
     getInitialState: function () {
-        var elements = window.logged_in_user ? ['Heroes', 'Matches', 'Items', 'Status'] : ['Heroes', 'Matches', 'Items'];
+        var elements = ['Heroes', 'Matches', 'Items', 'Status'] ;
         return {elements: elements, active: elements[0], user: window.logged_in_user}
     },
     renderChildren: function () {

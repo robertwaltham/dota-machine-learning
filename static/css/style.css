@@ -12,9 +12,10 @@
 }
 
 .loading-spinner-wrap > .spinner {
-    top:50%;
-    left:50%;
+    top: 50%;
+    left: 50%;
 }
+
 .hero-image {
     width: 128px;
     height: 72px;
@@ -42,15 +43,26 @@
 .match-detail-item.empty {
 }
 
-.footer-copy{
+.footer-copy {
     font-size: 12px;
     margin: 5px 0;
 }
 
-.footer-copy.right{
+.footer-copy.right {
     text-align: right;
 }
 
-.footer{
-    margin:20px;
+.footer {
+    margin: 20px;
+}
+
+.axis {
+    font: 10px sans-serif;
+}
+
+.axis path,
+.axis line {
+    fill: none;
+    stroke: #000;
+    shape-rendering: crispEdges;
 }
