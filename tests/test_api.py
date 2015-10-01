@@ -47,7 +47,7 @@ class APITestAssetLoading(TestCase):
         response.json = mock.MagicMock(return_value=data)
         mocked_get = mock.MagicMock(return_value=response)
 
-        with mock.patch('requests.get', mocked_get):
+        with mock.patch('DotaStats.dota.requests.get', mocked_get):
             DotaApi.load_heroes_from_api()
 
         self.assertGreaterEqual(Hero.objects.all().count(), n_heroes)
@@ -79,7 +79,7 @@ class APITestAssetLoading(TestCase):
         response.json = mock.MagicMock(return_value=data)
         mocked_get = mock.MagicMock(return_value=response)
 
-        with mock.patch('requests.get', mocked_get):
+        with mock.patch('DotaStats.dota.requests.get', mocked_get):
             DotaApi.load_items_from_api()
 
         self.assertGreaterEqual(Item.objects.all().count(), n_items)
@@ -97,7 +97,7 @@ class APITestAssetLoading(TestCase):
         response.json = mock.MagicMock(return_value=data)
         mocked_get = mock.MagicMock(return_value=response)
 
-        with mock.patch('requests.get', mocked_get):
+        with mock.patch('DotaStats.dota.requests.get', mocked_get):
             count = DotaApi.load_hero_attribute_from_api()
 
         self.assertGreaterEqual(count, n_heroes)
@@ -136,7 +136,7 @@ class APITestMatchLoading(TransactionTestCase):
 
         mocked_api_request = mock.MagicMock(return_value=False)
 
-        with mock.patch('requests.get', mocked_get):
+        with mock.patch('DotaStats.dota.requests.get', mocked_get):
             with mock.patch('DotaStats.dota.DotaApi.load_matches_from_api_by_sequence_number', mocked_api_request):
                 created = DotaApi.load_matches_from_api()
 
@@ -155,7 +155,7 @@ class APITestMatchLoading(TransactionTestCase):
         response.json = mock.MagicMock(return_value=data)
         mocked_get = mock.MagicMock(return_value=response)
 
-        with mock.patch('requests.get', mocked_get):
+        with mock.patch('DotaStats.dota.requests.get', mocked_get):
             response = DotaApi.load_matches_from_api_by_sequence_number(match_sequence_number=match_sequence_number)
             self.assertGreaterEqual(response, False)
 
@@ -226,6 +226,6 @@ class APITestMatchLoading(TransactionTestCase):
         response.json = mock.MagicMock(return_value=data)
         mocked_get = mock.MagicMock(return_value=response)
 
-        with mock.patch('requests.get', mocked_get):
+        with mock.patch('DotaStats.dota.requests.get', mocked_get):
             response = DotaApi.load_matches_from_api_by_sequence_number(match_sequence_number=match_sequence_number)
             self.assertGreaterEqual(Match.objects.all().count(), 10)
