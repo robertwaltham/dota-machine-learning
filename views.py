@@ -8,12 +8,13 @@ from django.contrib.auth.decorators import login_required
 from django.core.urlresolvers import reverse
 from django import http
 from django.http import JsonResponse
+from django.core.cache import caches
+from django.conf import settings
 
 from rest_framework import viewsets, pagination
 from djcelery.models import TaskMeta
 from celery import states
 
-from django.conf import settings # import the settings file
 from models import Match, Item, Hero
 from serializers import UserSerializer, GroupSerializer, HeroSerializer, \
     MatchSerializer, ItemSerializer, HeroRecentMatchesSerializer, MatchDateCountSerializer, ItemRecentMatchSerializer, \
@@ -103,6 +104,27 @@ class LogOutView(View):
         return redirect(reverse('index'))
 
 
+class CachedAPIViewMixin(object):
+    def dispatch(self, request, *args, **kwargs):
+        cache = caches['default']
+        cache_key = getattr(self, 'cache_key', None)
+        cache_timeout = getattr(self, 'cache_timeout', 300)
+
+        if cache_key is None:
+            raise NotImplementedError('cache_key is required')
+
+        cached_response = cache.get(cache_key)
+
+        if cached_response is not None:
+            return http.HttpResponse(cached_response, status=200)
+
+        response = super(CachedAPIViewMixin, self).dispatch(request, *args, **kwargs)
+        response.render()
+        cache.set(cache_key, response.content, timeout=cache_timeout)
+
+        return response
+
+
 class StandardResultsSetPagination(pagination.PageNumberPagination):
     page_size = 25
     page_size_query_param = 'page_size'
@@ -143,7 +165,9 @@ class MatchViewSet(viewsets.ModelViewSet):
     pagination_class = StandardResultsSetPagination
 
 
-class MatchDateCountSet(viewsets.ModelViewSet):
+class MatchDateCountSet(CachedAPIViewMixin, viewsets.ModelViewSet):
+    cache_key = 'match_date_count'
+    cache_timeout = 300
     queryset = Match.get_count_by_date_set()
     serializer_class = MatchDateCountSerializer
 
