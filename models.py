@@ -268,19 +268,19 @@ class Match(models.Model):
     def get_data_array(self, n_heroes=None):
         if not n_heroes:
             #hero_id's aren't neccesarily sequential
-            n_heroes = Hero.objects.all().aggregate(models.Max('hero_id'))
+            n_heroes = Hero.objects.all().filter(hero_id__gt=0).count()
         heroes_in_match = self.playerinmatch.all()
 
         if len(heroes_in_match) < 10:
             return None, 0
 
-        data = numpy.zeros((n_heroes * 2) + 2)
+        data = numpy.zeros(n_heroes * 2)
         for playerinmatch in heroes_in_match:
             hero_index = playerinmatch.hero_id
             if playerinmatch.player_slot > 127:
                 hero_index += n_heroes
             data[hero_index - 1] = 1
-        return data, int(self.radiant_win)
+        return data.astype(int), int(self.radiant_win)
 
     def get_team_bitstring(self, n_heroes=None):
 

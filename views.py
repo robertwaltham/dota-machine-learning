@@ -106,7 +106,6 @@ class MatchCSVView(CSVView):
         for hero in heroes:
             dire_heroes[hero.hero_id - 1] = 'dire_' + hero.name + '_' + str(hero.hero_id)
         header = ['match_id', 'duration', 'radiant_win'] + radiant_heroes + dire_heroes
-
         rows = [header]
         for match in matches:
             array, win = match.get_data_array(n_heroes=n_heroes)
