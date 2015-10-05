@@ -15,6 +15,7 @@ router.register(r'taskmeta', views.TaskMetaSet, base_name='taskmeta')
 
 urlpatterns = patterns('',
                        url(r'^$', views.IndexView.as_view(), name='index'),
+                       url(r'^csv/', views.MatchCSVView.as_view(), name='csv'),
                        url(r'^login/', views.LogInView.as_view(), name='login'),
                        url(r'^logout/', views.LogOutView.as_view(), name='logout'),
                        url(r'^api/', include(router.urls), name='api'),

@@ -154,8 +154,9 @@ class Match(models.Model):
     @staticmethod
     def get_matches_for_item_id(item_id):
         item_filter = (Q(playerinmatch__item_0__pk=item_id) | Q(playerinmatch__item_1__pk=item_id) |
-             Q(playerinmatch__item_2__pk=item_id) | Q(playerinmatch__item_3__pk=item_id) |
-             Q(playerinmatch__item_4__pk=item_id) | Q(playerinmatch__item_5__pk=item_id)) & Q(valid_for_model=True)
+                       Q(playerinmatch__item_2__pk=item_id) | Q(playerinmatch__item_3__pk=item_id) |
+                       Q(playerinmatch__item_4__pk=item_id) | Q(playerinmatch__item_5__pk=item_id)) & Q(
+            valid_for_model=True)
 
         objects = Match.objects.filter(item_filter).distinct().order_by('-match_id')[:10].prefetch_related(
             'playerinmatch',
@@ -169,7 +170,6 @@ class Match(models.Model):
             'playerinmatch__item_5')
 
         return objects
-
 
     @staticmethod
     def process_match_info(match):
@@ -254,12 +254,21 @@ class Match(models.Model):
             .values('date') \
             .annotate(count=Count('match_id'))
 
+    @staticmethod
+    def get_valid_matches(n_matches=1000, min_duration=600):
+        return Match.objects.filter(has_been_processed=True,
+                                    duration__gt=min_duration,
+                                    valid_for_model=True) \
+            .order_by('?')[:n_matches] \
+            .prefetch_related('playerinmatch', 'playerinmatch__hero')
+
     def __unicode__(self):
         return str(self.match_id)
 
     def get_data_array(self, n_heroes=None):
         if not n_heroes:
-            n_heroes = Hero.objects.all().count()
+            #hero_id's aren't neccesarily sequential
+            n_heroes = Hero.objects.all().aggregate(models.Max('hero_id'))
         heroes_in_match = self.playerinmatch.all()
 
         if len(heroes_in_match) < 10:
@@ -270,7 +279,7 @@ class Match(models.Model):
             hero_index = playerinmatch.hero_id
             if playerinmatch.player_slot > 127:
                 hero_index += n_heroes
-            data[hero_index] = 1
+            data[hero_index - 1] = 1
         return data, int(self.radiant_win)
 
     def get_team_bitstring(self, n_heroes=None):
@@ -328,6 +337,7 @@ class Match(models.Model):
 
     def get_lobby_string(self):
         return LOBBIES[int(self.lobby_type)]
+
 
     def get_game_mode_string(self):
         try:

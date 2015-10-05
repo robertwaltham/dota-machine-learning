@@ -1,16 +1,17 @@
 import json
+
 from faker import Factory as FakerFactory
 from django.test import TestCase
-from rest_framework.reverse import reverse
 from django.contrib.auth.models import User
+from django.core.cache import caches
+from django.conf import settings
+from rest_framework.reverse import reverse
 
 from DotaStats.models import Hero, Item, Player, Match, PlayerInMatch
 from DotaStats.tests.test_models import HeroFactory, ItemFactory, PlayerFactory, MatchFactory
 
 
 # run celery task synchronous
-from django.conf import settings
-
 settings.CELERY_ALWAYS_EAGER = True
 
 fake = FakerFactory.create()
@@ -24,6 +25,9 @@ class TestDotaView(TestCase):
         HeroFactory.reset_sequence()
         ItemFactory.reset_sequence()
         MatchFactory.reset_sequence()
+
+        cache = caches['default']
+        cache.clear()
 
         self.players = [PlayerFactory() for i in range(0, 10)]
         self.heroes = [HeroFactory() for i in range(0, 10)]

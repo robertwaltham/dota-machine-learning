@@ -1,3 +1,5 @@
+import csv
+
 from django.views.generic import View, TemplateView, ListView, FormView
 from django.views.decorators.csrf import requires_csrf_token
 from django.utils.decorators import method_decorator
@@ -6,6 +8,7 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.core.urlresolvers import reverse
+from django.db import models
 from django import http
 from django.http import JsonResponse
 from django.core.cache import caches
@@ -16,9 +19,8 @@ from djcelery.models import TaskMeta
 from celery import states
 
 from models import Match, Item, Hero
-from serializers import UserSerializer, GroupSerializer, HeroSerializer, \
-    MatchSerializer, ItemSerializer, HeroRecentMatchesSerializer, MatchDateCountSerializer, ItemRecentMatchSerializer, \
-    TaskMetaSerializer
+from serializers import HeroSerializer, MatchSerializer, ItemSerializer, HeroRecentMatchesSerializer, \
+    MatchDateCountSerializer, ItemRecentMatchSerializer, TaskMetaSerializer
 
 
 class LoginRequiredMixin(object):
@@ -45,12 +47,36 @@ class JSONView(JSONResponseMixin, TemplateView):
         return self.render_to_json_response(context, **response_kwargs)
 
 
+class Echo(object):
+    """An object that implements just the write method of the file-like
+    interface.
+    """
+
+    def write(self, value):
+        """Write the value by returning it, instead of storing in a buffer."""
+        return value
+
+
+class CSVView(TemplateView):
+    """A view that streams a large CSV file."""
+
+    def render_to_response(self, context, **response_kwargs):
+        rows = self.get_rows()
+        pseudo_buffer = Echo()
+        writer = csv.writer(pseudo_buffer)
+        response = http.StreamingHttpResponse((writer.writerow(row) for row in rows), content_type="text/csv")
+
+        filename = getattr(self, 'file_name', 'data.csv')
+        response['Content-Disposition'] = 'attachment; filename="{0}"'.format(filename)
+        return response
+
+
 class IndexView(TemplateView):
     template_name = 'DotaStats/index.html'
 
     def get_context_data(self, **kwargs):
 
-        self.request.META["CSRF_COOKIE_USED"] = True  # force csrf cookie
+        self.request.META['CSRF_COOKIE_USED'] = True  # force csrf cookie
         context = super(IndexView, self).get_context_data(**kwargs)
         try:
             context['GA_KEY'] = settings.GA_KEY
@@ -63,12 +89,30 @@ class IndexView(TemplateView):
         return super(IndexView, self).dispatch(*args, **kwargs)
 
 
-class HeroListView(ListView):
-    template_name = 'DotaStats/herolist.html'
-    context_object_name = 'heroes'
+class MatchCSVView(CSVView):
+    file_name = 'match_data.csv'
 
-    def get_queryset(self):
-        return Hero.objects.filter(hero_id__gt=0).order_by('primary_attribute')
+    def get_rows(self):
+        matches = Match.get_valid_matches(n_matches=5000)
+        heroes = Hero.objects.all().filter(hero_id__gt=0).order_by('hero_id')
+        # hero_ids aren't neccessarily sequential
+        n_heroes = heroes.aggregate(models.Max('hero_id'))['hero_id__max']
+
+        radiant_heroes = [x for x in range(n_heroes)]
+        for hero in heroes:
+            radiant_heroes[hero.hero_id - 1] = 'radiant_' + hero.name + '_' + str(hero.hero_id)
+
+        dire_heroes = [x for x in range(n_heroes)]
+        for hero in heroes:
+            dire_heroes[hero.hero_id - 1] = 'dire_' + hero.name + '_' + str(hero.hero_id)
+        header = ['match_id', 'duration', 'radiant_win'] + radiant_heroes + dire_heroes
+
+        rows = [header]
+        for match in matches:
+            array, win = match.get_data_array(n_heroes=n_heroes)
+            row = [match.match_id, match.duration, win] + array.tolist()
+            rows.append(row)
+        return rows
 
 
 class LogInView(FormView):
